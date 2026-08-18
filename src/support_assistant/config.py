@@ -1,6 +1,7 @@
 """Application configuration and environment validation."""
 
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal, Self
 
 from pydantic import Field, HttpUrl, SecretStr, model_validator
@@ -28,9 +29,14 @@ class Settings(BaseSettings):
     embedding_model: str | None = None
     azure_ai_search_endpoint: HttpUrl | None = None
     azure_ai_search_index: str = "support-knowledge"
+    azure_ai_search_semantic_configuration: str = "support-semantic-config"
+    azure_ai_search_vector_field: str = "content_vector"
     azure_client_id: str | None = None
     applicationinsights_connection_string: SecretStr | None = None
 
+    knowledge_base_path: Path = Path("data/knowledge-base")
+    retrieval_top_k: int = Field(default=3, ge=1, le=10)
+    embedding_dimensions: int = Field(default=1_536, ge=1, le=4_096)
     bootcamp_access_token: SecretStr = SecretStr("local-development-token")
     max_message_characters: int = Field(default=4_000, ge=100, le=20_000)
     max_sessions: int = Field(default=100, ge=1, le=10_000)

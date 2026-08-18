@@ -1,6 +1,8 @@
 """FastAPI contract and middleware tests."""
 
 import json
+from collections.abc import AsyncIterator
+from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
@@ -48,6 +50,7 @@ def test_chat_streams_metadata_text_and_completion(client: TestClient) -> None:
     assert response.headers["x-request-id"] == "request-123"
     assert "event: metadata" in body
     assert "event: delta" in body
+    assert "event: citations" in body
     assert "event: done" in body
     assert "reset" in body.casefold()
 
@@ -87,3 +90,44 @@ def test_static_chat_page_loads(client: TestClient) -> None:
     assert response.status_code == 200
     assert "Contoso Support Assistant" in response.text
     assert response.headers["content-security-policy"].startswith("default-src")
+
+
+def test_not_ready_provider_returns_service_unavailable(client: TestClient) -> None:
+    class NotReadyService:
+        async def is_ready(self) -> bool:
+            return False
+
+    client.app.state.chat_service = NotReadyService()
+
+    response = client.get("/ready")
+
+    assert response.status_code == 503
+
+
+def test_provider_error_is_returned_as_safe_stream_event(client: TestClient) -> None:
+    from support_assistant.agent.provider import ChatProviderError
+
+    class FailingService:
+        async def stream(
+            self, *, message: str, session_id: UUID | None
+        ) -> tuple[UUID, list[object], AsyncIterator[str]]:
+            del message, session_id
+
+            async def fail() -> AsyncIterator[str]:
+                if False:
+                    yield ""
+                raise ChatProviderError("sensitive detail")
+
+            return uuid4(), [], fail()
+
+    client.app.state.chat_service = FailingService()
+
+    response = client.post(
+        "/api/chat",
+        headers={"Authorization": "Bearer test-token"},
+        json={"message": "hello"},
+    )
+
+    assert response.status_code == 200
+    assert "event: error" in response.text
+    assert "sensitive detail" not in response.text

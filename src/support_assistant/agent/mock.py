@@ -6,6 +6,7 @@ from typing import ClassVar
 from uuid import UUID
 
 from support_assistant.agent.models import ConversationTurn
+from support_assistant.retrieval.models import KnowledgeDocument
 
 
 class MockChatProvider:
@@ -33,17 +34,27 @@ class MockChatProvider:
         message: str,
         session_id: UUID,
         history: Sequence[ConversationTurn],
+        context: Sequence[KnowledgeDocument],
     ) -> AsyncIterator[str]:
         """Yield a deterministic response in small chunks to exercise streaming."""
         del session_id
         normalized = message.casefold()
-        response = next(
-            (text for keyword, text in self._RESPONSES.items() if keyword in normalized),
-            (
-                "I am running in local mock mode. Ask about a password reset, warranty, "
-                "or support ticket. Day 2 replaces this response with grounded retrieval."
-            ),
-        )
+        if context:
+            source = context[0]
+            first_paragraph = next(
+                paragraph.strip()
+                for paragraph in source.content.split("\n\n")
+                if paragraph.strip() and not paragraph.lstrip().startswith("#")
+            )
+            response = f"Based on {source.title}: {first_paragraph} [{source.id}]"
+        else:
+            response = next(
+                (text for keyword, text in self._RESPONSES.items() if keyword in normalized),
+                (
+                    "I am running in local mock mode. Ask about a password reset, warranty, "
+                    "or support ticket."
+                ),
+            )
         if history:
             response = f"Continuing our conversation: {response}"
 
@@ -55,3 +66,9 @@ class MockChatProvider:
     async def is_ready(self) -> bool:
         """Mock mode is always ready."""
         return True
+
+    async def start(self) -> None:
+        """No resources are required."""
+
+    async def close(self) -> None:
+        """No resources are held."""

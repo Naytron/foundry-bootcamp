@@ -35,6 +35,37 @@ function appendMessage(role, text, extraClass = "") {
   return content;
 }
 
+function appendSources(messageContent, sources) {
+  const validSources = sources.filter((source) => {
+    try {
+      const url = new URL(source.url);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch {
+      return false;
+    }
+  });
+  if (!validSources.length) {
+    return;
+  }
+
+  const heading = document.createElement("span");
+  heading.className = "message-role";
+  heading.textContent = "Sources";
+  const list = document.createElement("ul");
+  list.className = "sources";
+  for (const source of validSources) {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = source.url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = `${source.title} [${source.id}]`;
+    item.append(link);
+    list.append(item);
+  }
+  messageContent.parentElement.append(heading, list);
+}
+
 function parseEvent(block) {
   let name = "message";
   const data = [];
@@ -105,6 +136,8 @@ async function sendMessage(message) {
     } else if (name === "delta") {
       output.textContent += data.text;
       elements.messages.scrollTop = elements.messages.scrollHeight;
+    } else if (name === "citations") {
+      appendSources(output, data.sources || []);
     } else if (name === "error") {
       output.parentElement.classList.add("error");
       output.textContent = data.message;

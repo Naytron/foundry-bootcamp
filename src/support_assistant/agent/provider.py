@@ -5,6 +5,7 @@ from typing import Protocol
 from uuid import UUID
 
 from support_assistant.agent.models import ConversationTurn
+from support_assistant.retrieval.models import KnowledgeDocument
 
 
 class ChatProviderError(RuntimeError):
@@ -20,10 +21,19 @@ class ChatProvider(Protocol):
         message: str,
         session_id: UUID,
         history: Sequence[ConversationTurn],
+        context: Sequence[KnowledgeDocument],
     ) -> AsyncIterator[str]:
         """Stream response text for one conversation turn."""
         ...
 
     async def is_ready(self) -> bool:
         """Return whether the provider is configured to accept requests."""
+        ...
+
+    async def start(self) -> None:
+        """Initialize provider resources."""
+        ...
+
+    async def close(self) -> None:
+        """Release provider resources."""
         ...

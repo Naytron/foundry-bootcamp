@@ -68,7 +68,7 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         )
 
     service: ChatService = request.app.state.chat_service
-    session_id, response_stream = await service.stream(
+    session_id, sources, response_stream = await service.stream(
         message=payload.message,
         session_id=payload.session_id,
     )
@@ -82,6 +82,20 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         try:
             async for text in response_stream:
                 yield _event("delta", {"text": text})
+            if sources:
+                yield _event(
+                    "citations",
+                    {
+                        "sources": [
+                            {
+                                "id": source.id,
+                                "title": source.title,
+                                "url": source.source_url,
+                            }
+                            for source in sources
+                        ]
+                    },
+                )
             yield _event("done", {"session_id": str(session_id)})
         except ChatProviderError:
             logger.exception("Chat provider failed", extra={"request_id": request_id})
