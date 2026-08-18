@@ -44,7 +44,9 @@ Read [costs](docs/costs.md), run the platform-specific preflight script, and ver
 ## Reference
 
 - [Architecture](docs/architecture.md)
+- [CI/CD](docs/cicd.md)
 - [Setup](docs/setup.md)
+- [Glossary](docs/glossary.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Cleanup](docs/cleanup.md)
 - [Contributing](CONTRIBUTING.md)

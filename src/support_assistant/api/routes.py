@@ -6,13 +6,19 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
+from opentelemetry import trace
+from opentelemetry.trace import StatusCode
+from starlette.background import BackgroundTask
 
 from support_assistant.agent.provider import ChatProviderError
 from support_assistant.agent.service import ChatService
+from support_assistant.agent.sessions import SessionBusyError, SessionCapacityError
 from support_assistant.api.models import ChatRequest, HealthResponse, PublicConfigResponse
 from support_assistant.config import Settings
+from support_assistant.retrieval.provider import RetrievalError
 
 logger = logging.getLogger("support_assistant.api")
+tracer = trace.get_tracer("support_assistant.api")
 
 router = APIRouter()
 
@@ -68,44 +74,68 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         )
 
     service: ChatService = request.app.state.chat_service
-    session_id, sources, response_stream = await service.stream(
-        message=payload.message,
-        session_id=payload.session_id,
-    )
     request_id = request.state.request_id
+    try:
+        chat_response = await service.stream(
+            message=payload.message,
+            session_id=payload.session_id,
+        )
+    except (RetrievalError, SessionCapacityError) as exc:
+        logger.exception("Chat request setup failed", extra={"request_id": request_id})
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The support assistant is temporarily unavailable.",
+        ) from exc
+    except SessionBusyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Wait for the current response before sending another message.",
+        ) from exc
+
+    session_id = chat_response.session_id
+    sources = chat_response.sources
+    response_stream = chat_response.stream
 
     async def events() -> AsyncIterator[str]:
-        yield _event(
-            "metadata",
-            {"session_id": str(session_id), "request_id": request_id},
-        )
         try:
-            async for text in response_stream:
-                yield _event("delta", {"text": text})
-            if sources:
+            with tracer.start_as_current_span("support_assistant.chat_stream") as span:
+                span.set_attribute("app.request.id", request_id)
+                span.set_attribute("app.session.id", str(session_id))
+                span.set_attribute("app.retrieval.source_count", len(sources))
                 yield _event(
-                    "citations",
-                    {
-                        "sources": [
-                            {
-                                "id": source.id,
-                                "title": source.title,
-                                "url": source.source_url,
-                            }
-                            for source in sources
-                        ]
-                    },
+                    "metadata",
+                    {"session_id": str(session_id), "request_id": request_id},
                 )
-            yield _event("done", {"session_id": str(session_id)})
-        except ChatProviderError:
-            logger.exception("Chat provider failed", extra={"request_id": request_id})
-            yield _event(
-                "error",
-                {
-                    "message": "The assistant could not complete this response.",
-                    "request_id": request_id,
-                },
-            )
+                try:
+                    async for text in response_stream:
+                        yield _event("delta", {"text": text})
+                    if sources:
+                        yield _event(
+                            "citations",
+                            {
+                                "sources": [
+                                    {
+                                        "id": source.id,
+                                        "title": source.title,
+                                        "url": source.source_url,
+                                    }
+                                    for source in sources
+                                ]
+                            },
+                        )
+                    yield _event("done", {"session_id": str(session_id)})
+                except ChatProviderError:
+                    span.set_status(StatusCode.ERROR, "chat provider failed")
+                    logger.exception("Chat provider failed", extra={"request_id": request_id})
+                    yield _event(
+                        "error",
+                        {
+                            "message": "The assistant could not complete this response.",
+                            "request_id": request_id,
+                        },
+                    )
+        finally:
+            await chat_response.close()
 
     return StreamingResponse(
         events(),
@@ -114,4 +144,5 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
             "Cache-Control": "no-store",
             "X-Accel-Buffering": "no",
         },
+        background=BackgroundTask(chat_response.close),
     )

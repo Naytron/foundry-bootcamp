@@ -22,6 +22,7 @@ from support_assistant.api.middleware import (
 from support_assistant.api.routes import router
 from support_assistant.config import Settings, get_settings
 from support_assistant.identity import AzureCredential, create_credential
+from support_assistant.observability import configure_observability
 from support_assistant.retrieval.azure_search import AzureSearchRetriever
 from support_assistant.retrieval.embeddings import FoundryEmbeddingProvider
 from support_assistant.retrieval.local import LocalKnowledgeRetriever
@@ -72,6 +73,8 @@ def _create_chat_service(settings: Settings) -> tuple[ChatService, AzureCredenti
     sessions = SessionStore(
         max_sessions=settings.max_sessions,
         ttl_seconds=settings.session_ttl_seconds,
+        max_turns=settings.max_session_turns * 2,
+        on_evict=provider.discard_session,
     )
     return ChatService(provider, sessions, retriever), credential
 
@@ -80,6 +83,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Create an application instance with explicit, testable dependencies."""
     resolved_settings = settings or get_settings()
     _configure_logging(resolved_settings)
+    configure_observability(resolved_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:

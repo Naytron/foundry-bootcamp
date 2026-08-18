@@ -58,6 +58,7 @@ async def _run() -> None:
             knowledge_base_path=str(args.data),
             credential=credential,
             embeddings=embeddings,
+            rbac_retry_attempts=8,
         )
     finally:
         await embeddings.close()

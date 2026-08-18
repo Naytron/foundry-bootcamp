@@ -1,13 +1,15 @@
 """Microsoft Foundry implementation of the chat provider."""
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from typing import Any
 from uuid import UUID
 
-from agent_framework import Agent
+from agent_framework import Agent, Message
+from agent_framework.exceptions import ChatClientException
 from agent_framework.foundry import FoundryChatClient
 from azure.core.credentials import TokenCredential
 from azure.core.exceptions import AzureError
+from openai import OpenAIError
 
 from support_assistant.agent.models import ConversationTurn
 from support_assistant.agent.provider import ChatProviderError
@@ -46,6 +48,8 @@ class FoundryChatProvider:
             tools=SUPPORT_TOOLS,
         )
         self._sessions: dict[UUID, Any] = {}
+        self._session_turns: dict[UUID, int] = {}
+        self._max_session_turns = settings.max_session_turns
 
     async def stream(
         self,
@@ -54,21 +58,31 @@ class FoundryChatProvider:
         session_id: UUID,
         history: Sequence[ConversationTurn],
         context: Sequence[KnowledgeDocument],
-    ) -> AsyncIterator[str]:
+    ) -> AsyncGenerator[str]:
         """Stream one response while reusing Agent Framework conversation state."""
-        del history
         grounded_message = self._grounded_message(message, context)
         try:
             session = self._sessions.get(session_id)
-            if session is None:
+            seed_history = session is None and bool(history)
+            if session is None or self._session_turns.get(session_id, 0) >= self._max_session_turns:
+                seed_history = bool(history)
                 session = self._agent.create_session()
                 self._sessions[session_id] = session
+                self._session_turns[session_id] = 0
 
-            async for update in self._agent.run(grounded_message, session=session, stream=True):
+            run_input: str | list[Message] = grounded_message
+            if seed_history:
+                run_input = [
+                    *(Message(role=turn.role, contents=[turn.content]) for turn in history),
+                    Message(role="user", contents=[grounded_message]),
+                ]
+
+            async for update in self._agent.run(run_input, session=session, stream=True):
                 text = getattr(update, "text", None)
                 if text:
                     yield str(text)
-        except (AzureError, TimeoutError) as exc:
+            self._session_turns[session_id] += 1
+        except (AzureError, ChatClientException, OpenAIError, TimeoutError) as exc:
             raise ChatProviderError("Microsoft Foundry could not complete the response") from exc
 
     async def is_ready(self) -> bool:
@@ -82,6 +96,11 @@ class FoundryChatProvider:
     async def close(self) -> None:
         """Exit the Agent Framework resource scope."""
         await self._agent.__aexit__(None, None, None)
+
+    def discard_session(self, session_id: UUID) -> None:
+        """Remove provider state for a session evicted by the application store."""
+        self._sessions.pop(session_id, None)
+        self._session_turns.pop(session_id, None)
 
     @staticmethod
     def _grounded_message(message: str, context: Sequence[KnowledgeDocument]) -> str:

@@ -1,0 +1,106 @@
+name: Deploy workshop environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Azure Developer CLI environment name
+        required: true
+        type: string
+      location:
+        description: Azure region validated for the selected models
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Validate and deploy
+    runs-on: ubuntu-latest
+    environment: workshop
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_PRINCIPAL_ID: ${{ vars.AZURE_PRINCIPAL_ID }}
+      BOOTCAMP_ACCESS_TOKEN: ${{ secrets.BOOTCAMP_ACCESS_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Set up Azure Developer CLI
+        uses: Azure/setup-azd@cf638ffd167fc81e1851241a478a723c05fa9cb3 # v2.2.0
+
+      - name: Sign in to Azure with OIDC
+        uses: Azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign in Azure Developer CLI with OIDC
+        run: |
+          azd auth login \
+            --client-id "$AZURE_CLIENT_ID" \
+            --tenant-id "$AZURE_TENANT_ID" \
+            --federated-credential-provider github \
+            --no-prompt
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip==26.2.1
+          python -m pip install -e .
+
+      - name: Validate required environment configuration
+        run: |
+          set -euo pipefail
+          test -n "$AZURE_CLIENT_ID"
+          test -n "$AZURE_TENANT_ID"
+          test -n "$AZURE_SUBSCRIPTION_ID"
+          test -n "$AZURE_PRINCIPAL_ID"
+          test -n "$BOOTCAMP_ACCESS_TOKEN"
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+
+      - name: Configure azd environment
+        env:
+          AZURE_ENV_NAME: ${{ inputs.environment }}
+          AZURE_LOCATION: ${{ inputs.location }}
+        run: |
+          set -euo pipefail
+          azd env select "$AZURE_ENV_NAME" || azd env new "$AZURE_ENV_NAME" --no-prompt
+          azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
+          azd env set AZURE_LOCATION "$AZURE_LOCATION"
+          azd env set AZURE_PRINCIPAL_ID "$AZURE_PRINCIPAL_ID"
+          azd env set AZURE_PRINCIPAL_TYPE ServicePrincipal
+          azd env set BOOTCAMP_ACCESS_TOKEN "$BOOTCAMP_ACCESS_TOKEN"
+
+      - name: Provision with azd
+        run: azd provision --no-prompt
+
+      - name: Deploy with bounded ACR propagation retry
+        run: python scripts/azd_deploy_with_retry.py
+
+      - name: Seed synthetic knowledge
+        run: python scripts/run_with_azd_env.py python scripts/seed_search.py
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          SERVICE_URL=$(azd env get-value SERVICE_URL)
+          python scripts/smoke_test.py \
+            --base-url "$SERVICE_URL" \
+            --token "$BOOTCAMP_ACCESS_TOKEN"
+          echo "Workshop URL: $SERVICE_URL" >> "$GITHUB_STEP_SUMMARY"

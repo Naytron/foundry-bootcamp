@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  quality:
+    name: Python and repository quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip==26.2.1
+          python -m pip install -e ".[dev]"
+
+      - name: Lint and format check
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type check
+        run: mypy src
+
+      - name: Run tests
+        run: python -m pytest
+
+      - name: Audit Python dependencies
+        run: python -m pip_audit
+
+      - name: Validate repository content
+        run: |
+          python scripts/seed_search.py --dry-run
+          python scripts/validate_repo.py
+
+  infrastructure:
+    name: Bicep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Ensure Bicep is installed
+        run: az bicep version || az bicep install
+
+      - name: Compile Bicep
+        run: az bicep build --file infra/main.bicep --stdout > /dev/null
+
+  container:
+    name: Production container
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build image
+        run: docker build --tag foundry-bootcamp:${{ github.sha }} .
+
+      - name: Smoke-test image
+        run: |
+          set -euo pipefail
+          docker run --detach --name foundry-bootcamp \
+            --publish 8000:8000 \
+            --env APP_ENV=production \
+            --env USE_MOCK_SERVICES=true \
+            --env BOOTCAMP_ACCESS_TOKEN=ci-smoke-token \
+            foundry-bootcamp:${{ github.sha }}
+          trap 'docker rm --force foundry-bootcamp >/dev/null 2>&1 || true' EXIT
+          for attempt in {1..30}; do
+            if curl --silent --fail http://127.0.0.1:8000/health >/dev/null; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              docker logs foundry-bootcamp
+              exit 1
+            fi
+            sleep 1
+          done
+          curl --silent --fail --no-buffer \
+            --header "Authorization: Bearer ci-smoke-token" \
+            --header "Content-Type: application/json" \
+            --data '{"message":"Does the warranty cover accidental damage?"}' \
+            http://127.0.0.1:8000/api/chat |
+            grep --quiet "warranty-policy"

@@ -7,6 +7,30 @@ from pathlib import Path
 from support_assistant.retrieval.models import KnowledgeDocument
 
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "do",
+    "does",
+    "for",
+    "how",
+    "i",
+    "in",
+    "is",
+    "it",
+    "my",
+    "of",
+    "on",
+    "or",
+    "should",
+    "the",
+    "to",
+    "what",
+    "when",
+    "with",
+}
 
 
 def load_knowledge_documents(root: Path) -> list[KnowledgeDocument]:
@@ -67,7 +91,7 @@ class LocalKnowledgeRetriever:
         return await asyncio.to_thread(self._search, query)
 
     def _search(self, query: str) -> list[KnowledgeDocument]:
-        terms = set(TOKEN_PATTERN.findall(query.casefold()))
+        terms = set(TOKEN_PATTERN.findall(query.casefold())) - STOP_WORDS
         if not terms:
             return []
 

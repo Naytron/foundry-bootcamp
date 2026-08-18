@@ -179,6 +179,7 @@ async def test_foundry_embeddings_preserve_response_order() -> None:
         await provider.close()
 
     assert vectors == [[1.0, 1.0], [2.0, 2.0]]
+    project.get_openai_client.return_value.close.assert_called_once()
     project.close.assert_called_once()
 
 
@@ -283,3 +284,60 @@ async def test_seed_search_index_reports_rejected_documents() -> None:
                 credential=MagicMock(),
                 embeddings=FakeEmbeddings(),
             )
+
+
+async def test_seed_search_index_retries_rbac_propagation(tmp_path: Path) -> None:
+    response = MagicMock(status_code=403)
+    forbidden = HttpResponseError("role assignment is propagating", response=response)
+    wrapped = RetrievalError("indexing failed")
+    wrapped.__cause__ = forbidden
+
+    with (
+        patch(
+            "support_assistant.retrieval.indexing._seed_search_index_once",
+            side_effect=[wrapped, 5],
+        ) as seed_once,
+        patch("support_assistant.retrieval.indexing.asyncio.sleep") as sleep,
+    ):
+        count = await seed_search_index(
+            endpoint="https://example.search.windows.net",
+            index_name="support",
+            semantic_configuration="semantic",
+            vector_field="content_vector",
+            vector_dimensions=3,
+            knowledge_base_path=str(tmp_path),
+            credential=MagicMock(),
+            embeddings=FakeEmbeddings(),
+            rbac_retry_attempts=2,
+            rbac_retry_initial_seconds=0.25,
+        )
+
+    assert count == 5
+    assert seed_once.call_count == 2
+    sleep.assert_awaited_once_with(0.25)
+
+
+async def test_seed_search_index_does_not_retry_non_authorization_error(
+    tmp_path: Path,
+) -> None:
+    error = RetrievalError("schema is invalid")
+    with (
+        patch(
+            "support_assistant.retrieval.indexing._seed_search_index_once",
+            side_effect=error,
+        ) as seed_once,
+        pytest.raises(RetrievalError, match="schema is invalid"),
+    ):
+        await seed_search_index(
+            endpoint="https://example.search.windows.net",
+            index_name="support",
+            semantic_configuration="semantic",
+            vector_field="content_vector",
+            vector_dimensions=3,
+            knowledge_base_path=str(tmp_path),
+            credential=MagicMock(),
+            embeddings=FakeEmbeddings(),
+            rbac_retry_attempts=8,
+        )
+
+    seed_once.assert_called_once()

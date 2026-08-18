@@ -1,12 +1,19 @@
 """Deterministic chat provider for local learning and automated tests."""
 
 import asyncio
-from collections.abc import AsyncIterator, Sequence
+import json
+import re
+from collections.abc import AsyncGenerator, Sequence
 from typing import ClassVar
 from uuid import UUID
 
 from support_assistant.agent.models import ConversationTurn
+from support_assistant.retrieval.local import STOP_WORDS
 from support_assistant.retrieval.models import KnowledgeDocument
+from support_assistant.tools.support import create_case_draft, get_warranty_record
+
+TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+SERIAL_PATTERN = re.compile(r"\bCTS-\d{5}\b", re.IGNORECASE)
 
 
 class MockChatProvider:
@@ -35,18 +42,31 @@ class MockChatProvider:
         session_id: UUID,
         history: Sequence[ConversationTurn],
         context: Sequence[KnowledgeDocument],
-    ) -> AsyncIterator[str]:
+    ) -> AsyncGenerator[str]:
         """Yield a deterministic response in small chunks to exercise streaming."""
         del session_id
         normalized = message.casefold()
-        if context:
-            source = context[0]
-            first_paragraph = next(
-                paragraph.strip()
-                for paragraph in source.content.split("\n\n")
-                if paragraph.strip() and not paragraph.lstrip().startswith("#")
+        serial = SERIAL_PATTERN.search(message)
+        if serial:
+            response = json.dumps(get_warranty_record(serial.group()), separators=(",", ":"))
+        elif "draft" in normalized and ("case" in normalized or "ticket" in normalized):
+            response = json.dumps(
+                create_case_draft(
+                    product="Contoso Trail Sensor",
+                    summary=message,
+                    urgency="normal",
+                ),
+                separators=(",", ":"),
             )
-            response = f"Based on {source.title}: {first_paragraph} [{source.id}]"
+        elif {"battery", "hot", "smoke", "smoking"} & set(TOKEN_PATTERN.findall(normalized)):
+            response = (
+                "Escalate immediately when a customer reports a safety hazard, smoke, "
+                "heat, or a damaged battery. [support-escalation]"
+            )
+        elif context:
+            source = context[0]
+            paragraph = self._best_paragraph(source.content, message)
+            response = f"Based on {source.title}: {paragraph} [{source.id}]"
         else:
             response = next(
                 (text for keyword, text in self._RESPONSES.items() if keyword in normalized),
@@ -72,3 +92,22 @@ class MockChatProvider:
 
     async def close(self) -> None:
         """No resources are held."""
+
+    def discard_session(self, session_id: UUID) -> None:
+        """Mock mode has no provider session state."""
+        del session_id
+
+    @staticmethod
+    def _best_paragraph(content: str, query: str) -> str:
+        terms = set(TOKEN_PATTERN.findall(query.casefold())) - STOP_WORDS
+        paragraphs = [
+            paragraph.strip()
+            for paragraph in content.split("\n\n")
+            if paragraph.strip() and not paragraph.lstrip().startswith("#")
+        ]
+        return max(
+            paragraphs,
+            key=lambda paragraph: sum(
+                term in terms for term in TOKEN_PATTERN.findall(paragraph.casefold())
+            ),
+        )

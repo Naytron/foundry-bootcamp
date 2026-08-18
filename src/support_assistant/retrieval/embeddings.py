@@ -46,4 +46,5 @@ class FoundryEmbeddingProvider:
         return [list(item.embedding) for item in ordered]
 
     async def close(self) -> None:
+        await asyncio.to_thread(self._openai_client.close)
         await asyncio.to_thread(self._project_client.close)

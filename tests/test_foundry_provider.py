@@ -5,9 +5,12 @@ from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
+from agent_framework.exceptions import ChatClientException
 from azure.core.exceptions import HttpResponseError
+from openai import OpenAIError
 
 from support_assistant.agent.foundry import FoundryChatProvider
+from support_assistant.agent.models import ConversationTurn
 from support_assistant.agent.provider import ChatProviderError
 from support_assistant.config import Settings
 from support_assistant.retrieval.models import KnowledgeDocument
@@ -17,15 +20,17 @@ class FakeAgent:
     """Minimal Agent Framework stand-in."""
 
     def __init__(self) -> None:
-        self.session = object()
+        self.sessions: list[object] = []
         self.entered = False
         self.exited = False
-        self.last_message = ""
+        self.last_message: object = ""
 
     def create_session(self) -> object:
-        return self.session
+        session = object()
+        self.sessions.append(session)
+        return session
 
-    def run(self, message: str, **_: object) -> AsyncIterator[object]:
+    def run(self, message: object, **_: object) -> AsyncIterator[object]:
         self.last_message = message
 
         async def updates() -> AsyncIterator[object]:
@@ -112,7 +117,60 @@ async def test_foundry_provider_reuses_session() -> None:
                 )
             ]
 
-    assert provider._sessions[session_id] is fake_agent.session
+    assert provider._sessions[session_id] is fake_agent.sessions[0]
+
+
+async def test_foundry_provider_resets_bounded_session() -> None:
+    fake_agent = FakeAgent()
+    settings = _settings()
+    settings.max_session_turns = 1
+    with (
+        patch("support_assistant.agent.foundry.FoundryChatClient"),
+        patch("support_assistant.agent.foundry.Agent", return_value=fake_agent),
+    ):
+        provider = FoundryChatProvider(settings, MagicMock())
+        session_id = UUID(int=4)
+        for _ in range(2):
+            _ = [
+                text
+                async for text in provider.stream(
+                    message="hello",
+                    session_id=session_id,
+                    history=(
+                        ConversationTurn(role="user", content="previous question"),
+                        ConversationTurn(role="assistant", content="previous answer"),
+                    ),
+                    context=(),
+                )
+            ]
+
+    assert len(fake_agent.sessions) == 2
+    assert provider._sessions[session_id] is fake_agent.sessions[1]
+    assert isinstance(fake_agent.last_message, list)
+    assert len(fake_agent.last_message) == 3
+
+
+async def test_foundry_provider_discards_evicted_session() -> None:
+    fake_agent = FakeAgent()
+    with (
+        patch("support_assistant.agent.foundry.FoundryChatClient"),
+        patch("support_assistant.agent.foundry.Agent", return_value=fake_agent),
+    ):
+        provider = FoundryChatProvider(_settings(), MagicMock())
+        session_id = UUID(int=5)
+        _ = [
+            text
+            async for text in provider.stream(
+                message="hello",
+                session_id=session_id,
+                history=(),
+                context=(),
+            )
+        ]
+        provider.discard_session(session_id)
+
+    assert session_id not in provider._sessions
+    assert session_id not in provider._session_turns
 
 
 async def test_foundry_provider_sanitizes_azure_errors() -> None:
@@ -130,6 +188,48 @@ async def test_foundry_provider_sanitizes_azure_errors() -> None:
                 async for text in provider.stream(
                     message="hello",
                     session_id=UUID(int=3),
+                    history=(),
+                    context=(),
+                )
+            ]
+
+
+async def test_foundry_provider_sanitizes_openai_errors() -> None:
+    fake_agent = FakeAgent()
+    fake_agent.run = MagicMock(side_effect=OpenAIError("sensitive OpenAI detail"))
+    with (
+        patch("support_assistant.agent.foundry.FoundryChatClient"),
+        patch("support_assistant.agent.foundry.Agent", return_value=fake_agent),
+    ):
+        provider = FoundryChatProvider(_settings(), MagicMock())
+
+        with pytest.raises(ChatProviderError, match="could not complete"):
+            _ = [
+                text
+                async for text in provider.stream(
+                    message="hello",
+                    session_id=UUID(int=7),
+                    history=(),
+                    context=(),
+                )
+            ]
+
+
+async def test_foundry_provider_sanitizes_agent_framework_errors() -> None:
+    fake_agent = FakeAgent()
+    fake_agent.run = MagicMock(side_effect=ChatClientException("framework detail"))
+    with (
+        patch("support_assistant.agent.foundry.FoundryChatClient"),
+        patch("support_assistant.agent.foundry.Agent", return_value=fake_agent),
+    ):
+        provider = FoundryChatProvider(_settings(), MagicMock())
+
+        with pytest.raises(ChatProviderError, match="could not complete"):
+            _ = [
+                text
+                async for text in provider.stream(
+                    message="hello",
+                    session_id=UUID(int=8),
                     history=(),
                     context=(),
                 )

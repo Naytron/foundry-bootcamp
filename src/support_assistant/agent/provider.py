@@ -1,6 +1,6 @@
 """Chat provider protocol and provider-level errors."""
 
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncGenerator, Sequence
 from typing import Protocol
 from uuid import UUID
 
@@ -22,7 +22,7 @@ class ChatProvider(Protocol):
         session_id: UUID,
         history: Sequence[ConversationTurn],
         context: Sequence[KnowledgeDocument],
-    ) -> AsyncIterator[str]:
+    ) -> AsyncGenerator[str]:
         """Stream response text for one conversation turn."""
         ...
 
@@ -36,4 +36,8 @@ class ChatProvider(Protocol):
 
     async def close(self) -> None:
         """Release provider resources."""
+        ...
+
+    def discard_session(self, session_id: UUID) -> None:
+        """Discard provider state after the application evicts a session."""
         ...

@@ -32,6 +32,20 @@ def test_production_rejects_default_access_token() -> None:
         )
 
 
+def test_production_rejects_message_content_tracing() -> None:
+    with pytest.raises(ValidationError, match="Message-content tracing"):
+        Settings(
+            _env_file=None,
+            app_env="production",
+            use_mock_services=False,
+            foundry_project_endpoint="https://example.services.ai.azure.com/api/projects/demo",
+            foundry_model="chat",
+            azure_ai_search_endpoint="https://example.search.windows.net",
+            bootcamp_access_token="non-default",
+            capture_message_content=True,
+        )
+
+
 def test_local_identity_uses_default_credential() -> None:
     settings = Settings(_env_file=None, app_env="test", use_mock_services=True)
     with patch("support_assistant.identity.DefaultAzureCredential") as credential:

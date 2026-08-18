@@ -2,12 +2,20 @@
 
 import json
 from collections.abc import AsyncIterator
+from types import SimpleNamespace
 from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
+from support_assistant.agent.mock import MockChatProvider
+from support_assistant.agent.service import ChatService
+from support_assistant.agent.sessions import SessionStore
+from support_assistant.api.models import ChatRequest
+from support_assistant.api.routes import chat
 from support_assistant.config import Settings
 from support_assistant.main import create_app
+from support_assistant.retrieval.provider import NullKnowledgeRetriever
 
 
 def test_health_and_readiness_are_public(client: TestClient) -> None:
@@ -108,9 +116,7 @@ def test_provider_error_is_returned_as_safe_stream_event(client: TestClient) -> 
     from support_assistant.agent.provider import ChatProviderError
 
     class FailingService:
-        async def stream(
-            self, *, message: str, session_id: UUID | None
-        ) -> tuple[UUID, list[object], AsyncIterator[str]]:
+        async def stream(self, *, message: str, session_id: UUID | None) -> object:
             del message, session_id
 
             async def fail() -> AsyncIterator[str]:
@@ -118,7 +124,16 @@ def test_provider_error_is_returned_as_safe_stream_event(client: TestClient) -> 
                     yield ""
                 raise ChatProviderError("sensitive detail")
 
-            return uuid4(), [], fail()
+            class FailingResponse:
+                def __init__(self) -> None:
+                    self.session_id = uuid4()
+                    self.sources: list[object] = []
+                    self.stream = fail()
+
+                async def close(self) -> None:
+                    await self.stream.aclose()
+
+            return FailingResponse()
 
     client.app.state.chat_service = FailingService()
 
@@ -131,3 +146,91 @@ def test_provider_error_is_returned_as_safe_stream_event(client: TestClient) -> 
     assert response.status_code == 200
     assert "event: error" in response.text
     assert "sensitive detail" not in response.text
+
+
+def test_retrieval_error_returns_safe_service_unavailable(client: TestClient) -> None:
+    from support_assistant.retrieval.provider import RetrievalError
+
+    class FailingRetrievalService:
+        async def stream(self, *, message: str, session_id: UUID | None) -> None:
+            del message, session_id
+            raise RetrievalError("sensitive search detail")
+
+    client.app.state.chat_service = FailingRetrievalService()
+
+    response = client.post(
+        "/api/chat",
+        headers={"Authorization": "Bearer test-token"},
+        json={"message": "hello"},
+    )
+
+    assert response.status_code == 503
+    assert "temporarily unavailable" in response.json()["detail"]
+    assert "sensitive search detail" not in response.text
+
+
+def test_overlapping_session_returns_conflict(client: TestClient) -> None:
+    from support_assistant.agent.sessions import SessionBusyError
+
+    class BusyService:
+        async def stream(self, *, message: str, session_id: UUID | None) -> None:
+            del message, session_id
+            raise SessionBusyError("internal state")
+
+    client.app.state.chat_service = BusyService()
+
+    response = client.post(
+        "/api/chat",
+        headers={"Authorization": "Bearer test-token"},
+        json={"message": "hello"},
+    )
+
+    assert response.status_code == 409
+    assert "Wait for the current response" in response.json()["detail"]
+
+
+async def test_closing_stream_after_metadata_releases_session_lease() -> None:
+    service = ChatService(
+        MockChatProvider(),
+        SessionStore(max_sessions=1, ttl_seconds=60),
+        NullKnowledgeRetriever(),
+    )
+    app = SimpleNamespace(
+        state=SimpleNamespace(
+            settings=Settings(
+                _env_file=None,
+                app_env="test",
+                use_mock_services=True,
+                bootcamp_access_token="test-token",
+            ),
+            chat_service=service,
+        )
+    )
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/chat",
+            "headers": [],
+            "query_string": b"",
+            "server": ("testserver", 80),
+            "client": ("testclient", 123),
+            "scheme": "http",
+            "app": app,
+            "state": {"request_id": "early-disconnect"},
+        }
+    )
+
+    response = await chat(ChatRequest(message="hello"), request)
+    iterator = response.body_iterator
+    metadata = await anext(iterator)
+    await iterator.aclose()
+
+    metadata_text = metadata.decode() if isinstance(metadata, bytes) else metadata
+    metadata_json = json.loads(metadata_text.split("data: ", maxsplit=1)[1])
+    session_id = UUID(metadata_json["session_id"])
+    next_response = await service.stream(
+        message="hello again",
+        session_id=session_id,
+    )
+    await next_response.close()

@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     azure_ai_search_vector_field: str = "content_vector"
     azure_client_id: str | None = None
     applicationinsights_connection_string: SecretStr | None = None
+    capture_message_content: bool = False
 
     knowledge_base_path: Path = Path("data/knowledge-base")
     retrieval_top_k: int = Field(default=3, ge=1, le=10)
@@ -40,6 +41,7 @@ class Settings(BaseSettings):
     bootcamp_access_token: SecretStr = SecretStr("local-development-token")
     max_message_characters: int = Field(default=4_000, ge=100, le=20_000)
     max_sessions: int = Field(default=100, ge=1, le=10_000)
+    max_session_turns: int = Field(default=10, ge=1, le=100)
     session_ttl_seconds: int = Field(default=3_600, ge=60, le=86_400)
     rate_limit_requests: int = Field(default=30, ge=1, le=10_000)
     rate_limit_window_seconds: int = Field(default=60, ge=1, le=3_600)
@@ -65,6 +67,8 @@ class Settings(BaseSettings):
             and self.bootcamp_access_token.get_secret_value() == "local-development-token"
         ):
             raise ValueError("BOOTCAMP_ACCESS_TOKEN must be changed in production")
+        if self.app_env == "production" and self.capture_message_content:
+            raise ValueError("Message-content tracing must remain disabled in production")
 
         return self
 

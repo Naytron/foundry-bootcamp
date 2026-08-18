@@ -33,8 +33,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "httpx2==2.10.0",
   "mypy==2.3.0",
   "pip-audit==2.10.1",
+  "pyyaml==6.0.3",
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
   "pytest-cov==7.0.0",
@@ -43,7 +45,6 @@ dev = [
 
 [project.urls]
 Documentation = "https://learn.microsoft.com/azure/foundry/"
-Repository = "https://github.com/REPLACE_WITH_OWNER/foundry-ai-development-bootcamp"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -69,5 +69,6 @@ The local path must pass without Azure credentials or network calls.
 4. Create an `azd` environment and set a unique bootcamp access token.
 5. Follow the cloud setup in [Day 1](../labs/day-1/README.md).
 
-Never add `.env`, `.azure` environment state, tokens, subscription IDs, or tenant IDs to a commit.
+After provisioning, use `scripts/run_with_azd_env.py` to run seed, smoke, or evaluation commands with the selected environment values. The wrapper parses `azd` JSON output and never evaluates shell text.
 
+Never add `.env`, `.azure` environment state, tokens, subscription IDs, or tenant IDs to a commit.

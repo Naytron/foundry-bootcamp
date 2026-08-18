@@ -1,6 +1,6 @@
 # Azure Deployment Plan
 
-> **Status:** Executing
+> **Status:** Ready for Validation
 
 Generated: 2026-08-18
 
@@ -122,7 +122,7 @@ No cloud deployment is authorized for repository construction. Actual usage and 
 | `Microsoft.App/containerApps` | 1 | 0 | Confirm app and managed environment quota |
 | `Microsoft.OperationalInsights/workspaces` | 1 | 0 | Confirm workspace limit and retention policy |
 | `Microsoft.Insights/components` | 1 | 0 | Confirm Application Insights availability |
-| `Microsoft.Authorization/roleAssignments` | 5 | 0 | Confirm assignment permission and tenant policy |
+| `Microsoft.Authorization/roleAssignments` | 11 | 0 | Confirm assignment permission and tenant policy |
 
 **Status:** Deferred by approved no-provisioning scope; mandatory learner preflight is part of the generated repository.
 
@@ -141,24 +141,37 @@ No cloud deployment is authorized for repository construction. Actual usage and 
 
 ### Generation
 
-- [ ] Initialize Git and public repository files
-- [ ] Generate Python application, tests, local mock mode, and chat UI
-- [ ] Generate container configuration
-- [ ] Generate modular Bicep and `azure.yaml`
-- [ ] Generate curriculum, scripts, and evaluation assets
-- [ ] Generate CI and optional OIDC deployment workflow
-- [ ] Apply security hardening
-- [ ] Complete functional verification
-- [ ] Set this plan to `Ready for Validation`
+- [x] Initialize Git and public repository files
+- [x] Generate Python application, tests, local mock mode, and chat UI
+- [x] Generate container configuration
+- [x] Generate modular Bicep and `azure.yaml`
+- [x] Generate curriculum, scripts, and evaluation assets
+- [x] Generate CI and optional OIDC deployment workflow
+- [x] Apply security hardening
+- [x] Complete functional verification
+- [x] Set this plan to `Ready for Validation`
 
 ### Validation
 
-- [ ] Invoke the `azure-validate` skill
-- [ ] Validate Python formatting, linting, typing, and tests
-- [ ] Validate Bicep and `azure.yaml`
-- [ ] Build and smoke-test the production container
-- [ ] Validate documentation links and secret hygiene
-- [ ] Record proof below and set status to `Validated`
+- [x] Invoke the `azure-validate` skill
+- [x] Validate Python formatting, linting, typing, and tests
+- [x] Validate Bicep and `azure.yaml`
+- [x] Build and smoke-test the production container
+- [x] Validate documentation links and secret hygiene
+- [ ] All Azure-context validation checks pass
+  - [x] Azure Developer CLI installation
+  - [x] `azure.yaml` stable-schema validation
+  - [x] Bicep compilation and linting
+  - [x] Application build and package-equivalent Docker build
+  - [x] Docker build-context validation
+  - [x] Static RBAC verification
+  - [ ] Learner `azd` environment setup
+  - [ ] Learner subscription and location confirmation
+  - [ ] `azd provision --preview --no-prompt`
+  - [ ] Azure template validation and what-if
+  - [ ] Azure Policy and live quota validation
+- [x] Record local validation proof below
+- [ ] Set status to `Validated` after the learner-context checks pass
 
 ### Deployment
 
@@ -167,36 +180,67 @@ No cloud deployment is authorized for repository construction. Actual usage and 
 
 ---
 
-## 9. Validation Proof
+## 9. Functional Verification
 
-| Check | Command | Result | Timestamp |
-|-------|---------|--------|-----------|
-| Pending | Pending generation | Pending | Pending |
-
-**Validated by:** Pending `azure-validate` skill
+- Status: Verified locally without Azure resources
+- Backend: Health, readiness, authentication, rate limiting, streaming chat, retrieval, citations, tools, and safe error behavior tested
+- UI: Playwright verified page load, mode display, token flow, grounded chat, citation links, new conversation, and mobile viewport
+- Evaluation: Eight of eight deterministic support cases passed
+- Container: Built for Python 3.12, ran as UID 10001, returned a grounded response, and contained no runtime packaging tools
+- Notes: Live Foundry, Search, Application Insights, and Container Apps verification remains a learner deployment step
 
 ---
 
-## 10. Files to Generate
+## 10. Validation Proof
+
+| Check | Command | Result | Timestamp |
+|-------|---------|--------|-----------|
+| Python quality | `ruff check .`, `ruff format --check .`, `mypy src` | Pass | 2026-08-18 |
+| Automated tests | `python -m pytest -q` | 86 passed, 95.74% coverage | 2026-08-18 |
+| Local evaluation | `python scripts/run_evaluation.py` | 8/8 passed | 2026-08-18 |
+| Repository integrity | `python scripts/validate_repo.py` | 106 text files valid | 2026-08-18 |
+| Dependency audit | `python -m pip_audit --skip-editable` | No known vulnerabilities | 2026-08-18 |
+| `azure.yaml` | Azure Developer CLI `validate_azure_yaml` | Pass against stable schema | 2026-08-18 |
+| Bicep | `az bicep build` and `az bicep lint` | Pass | 2026-08-18 |
+| Container | Offline-wheel build plus Azure-argument health/chat smoke checks | Pass; UID 10001; root-owned app files; no packaging tools | 2026-08-18 |
+| Browser UI | Playwright core-flow and mobile-viewport check | Pass | 2026-08-18 |
+
+**Validated by:** `azure-validate` for local/static checks. The plan remains `Ready for Validation` because the approved no-provisioning scope does not select a learner subscription or region, so preview, what-if, policy, quota, and live service checks cannot be truthfully completed.
+
+---
+
+## 11. Role Assignment Verification
+
+- Status: Static verification passed
+- Foundry project identity: Monitoring Metrics Publisher on Application Insights; Log Analytics Reader on Application Insights and the linked workspace
+- Learner identity: Foundry User on the project; Search Service Contributor and Search Index Data Contributor on Search; Log Analytics Reader on Application Insights and the linked workspace
+- Container App identity: Foundry User on the project; Search Index Data Reader on Search; AcrPull on the registry
+- Scope: Every assignment is resource-scoped with an explicit principal type and a deterministic name containing scope, principal, and role
+- Foundry observability: Application Insights is connected to the project with project-managed-identity authentication
+- Issues fixed: Added the project monitoring connection and roles, explicit ACR registry identity, image-preserving Container App upsert, and bounded RBAC propagation retries
+
+---
+
+## 12. Files Generated
 
 | File or directory | Purpose | Status |
 |-------------------|---------|--------|
 | `.azure/deployment-plan.md` | Deployment source of truth | Complete |
-| `azure.yaml` | Azure Developer CLI project definition | Pending |
-| `infra/` | Modular Bicep | Pending |
-| `src/support_assistant/` | FastAPI, Agent Framework, retrieval, tools, and UI | Pending |
-| `Dockerfile`, `.dockerignore` | Production container | Pending |
-| `data/`, `scripts/` | Synthetic knowledge, evaluations, and automation | Pending |
-| `labs/`, `docs/` | Self-paced curriculum and operations guides | Pending |
-| `.github/workflows/` | CI and opt-in OIDC deployment | Pending |
+| `azure.yaml` | Azure Developer CLI project definition | Complete |
+| `infra/` | Modular Bicep | Complete |
+| `src/support_assistant/` | FastAPI, Agent Framework, retrieval, tools, and UI | Complete |
+| `Dockerfile`, `.dockerignore` | Production container | Complete |
+| `data/`, `scripts/` | Synthetic knowledge, evaluations, and automation | Complete |
+| `labs/`, `docs/` | Self-paced curriculum and operations guides | Complete |
+| `.github/workflows/` | CI and opt-in OIDC deployment | Complete |
 
 ---
 
-## 11. Next Steps
+## 13. Next Steps
 
-> Current phase: generation
+> Current phase: Azure validation
 
-1. Create the repository foundation and Python application.
-2. Generate and validate infrastructure and automation.
-3. Complete functional verification.
-4. Mark this plan `Ready for Validation` and invoke `azure-validate`.
+1. A learner selects a subscription and supported region, then runs the read-only preflight.
+2. Run `azd provision --preview --no-prompt`, template validation/what-if, policy, and quota checks.
+3. Set this plan to `Validated` only after those checks pass.
+4. Do not deploy as part of repository construction; the approved scope ends with a deployment-ready repository.
