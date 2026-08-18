@@ -1,0 +1,95 @@
+[build-system]
+requires = ["setuptools>=82.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foundry-ai-bootcamp"
+version = "1.0.0"
+description = "Three-day self-paced Microsoft Foundry AI development bootcamp"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = "MIT"
+authors = [
+  { name = "Foundry AI Development Bootcamp contributors" }
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Education"
+]
+dependencies = [
+  "agent-framework-foundry==1.10.4",
+  "azure-identity==1.25.3",
+  "azure-monitor-opentelemetry==1.8.9",
+  "azure-search-documents==12.0.0",
+  "fastapi==0.141.1",
+  "httpx==0.28.1",
+  "pydantic-settings==2.15.0",
+  "uvicorn[standard]==0.52.1"
+]
+
+[project.optional-dependencies]
+dev = [
+  "mypy==2.3.0",
+  "pip-audit==2.10.1",
+  "pytest==9.1.1",
+  "pytest-asyncio==1.4.0",
+  "pytest-cov==7.0.0",
+  "ruff==0.16.2"
+]
+
+[project.urls]
+Documentation = "https://learn.microsoft.com/azure/foundry/"
+Repository = "https://github.com/REPLACE_WITH_OWNER/foundry-ai-development-bootcamp"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+support_assistant = ["web/*.html", "web/*.css", "web/*.js"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config --cov=src/support_assistant --cov-report=term-missing"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+  "ASYNC",
+  "B",
+  "E",
+  "F",
+  "I",
+  "PERF",
+  "RUF",
+  "S",
+  "SIM",
+  "UP"
+]
+ignore = ["S104"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S106"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+packages = ["support_assistant"]

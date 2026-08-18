@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="A Microsoft Foundry AI development bootcamp capstone.">
+    <title>Contoso Support Assistant</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#chat">Skip to chat</a>
+    <header>
+      <div>
+        <p class="eyebrow">Microsoft Foundry AI Development Bootcamp</p>
+        <h1>Contoso Support Assistant</h1>
+        <p>Build this assistant across three days: agent, grounding, tools, evaluation, and operations.</p>
+      </div>
+      <span id="mode-badge" class="badge">Loading mode</span>
+    </header>
+
+    <main id="chat">
+      <section class="card token-panel" aria-labelledby="access-heading">
+        <div>
+          <h2 id="access-heading">Workshop access</h2>
+          <p>The token stays in this browser tab and is sent only to the local or deployed app.</p>
+        </div>
+        <label for="token">Bootcamp access token</label>
+        <div class="token-row">
+          <input id="token" name="token" type="password" autocomplete="off">
+          <button id="save-token" type="button">Use token</button>
+        </div>
+        <p id="token-status" class="status" role="status"></p>
+      </section>
+
+      <section class="card chat-panel" aria-labelledby="conversation-heading">
+        <div class="chat-heading">
+          <div>
+            <h2 id="conversation-heading">Conversation</h2>
+            <p>Try: "How do I reset my password?"</p>
+          </div>
+          <button id="new-chat" class="secondary" type="button">New chat</button>
+        </div>
+
+        <ol id="messages" class="messages" aria-live="polite" aria-label="Chat messages">
+          <li class="message assistant">
+            <span class="message-role">Assistant</span>
+            <p>Welcome. Add your workshop token, then ask a support question.</p>
+          </li>
+        </ol>
+
+        <form id="chat-form">
+          <label for="message">Your question</label>
+          <textarea
+            id="message"
+            name="message"
+            rows="3"
+            required
+            placeholder="Ask a support question"
+          ></textarea>
+          <div class="form-footer">
+            <span id="character-count">0 characters</span>
+            <button id="send" type="submit">Send</button>
+          </div>
+        </form>
+        <p id="chat-status" class="status" role="status"></p>
+      </section>
+    </main>
+
+    <footer>
+      <p>Synthetic data only. This workshop application is not a production support system.</p>
+    </footer>
+  </body>
+</html>
+
