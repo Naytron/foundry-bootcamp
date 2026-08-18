@@ -1,0 +1,49 @@
+name: Workshop defect
+description: Report a reproducible problem in code, infrastructure, or instructions.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Remove credentials, tokens, subscription IDs, tenant IDs, and personal data before submitting.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Day 1
+        - Day 2
+        - Day 3
+        - Local development
+        - Azure deployment
+        - Documentation
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction steps
+      placeholder: Include the command and sanitized output.
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: Windows 11, Python 3.12, dev container, or Codespaces
+    validations:
+      required: true
+

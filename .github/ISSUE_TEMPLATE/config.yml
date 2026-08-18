@@ -1,0 +1,6 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Azure service support
+    url: https://azure.microsoft.com/support/
+    about: Use Azure support for subscription, billing, quota, and live service incidents.
+

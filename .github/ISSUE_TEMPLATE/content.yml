@@ -1,0 +1,26 @@
+name: Learning-content improvement
+description: Suggest a clearer explanation, exercise, or accessibility improvement.
+title: "[Content]: "
+labels:
+  - documentation
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Page or exercise
+      placeholder: labs/day-2/02-ground-your-agent.md
+    validations:
+      required: true
+  - type: textarea
+    id: obstacle
+    attributes:
+      label: What made learning difficult?
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement
+    validations:
+      required: true
+
