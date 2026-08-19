@@ -1,5 +1,6 @@
 """Learner curriculum contract tests."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -64,3 +65,11 @@ def test_repository_validation_ignores_generated_caches(
     monkeypatch.setattr(validate_repo, "ROOT", root)
 
     assert [path.name for path in _tracked_text_files()] == ["keep.md"]
+
+
+def test_preview_has_safe_first_deployment_default() -> None:
+    parameters = json.loads((ROOT / "infra/main.parameters.json").read_text(encoding="utf-8"))
+
+    assert parameters["parameters"]["appExists"]["value"] == (
+        "${SERVICE_APP_RESOURCE_EXISTS=false}"
+    )

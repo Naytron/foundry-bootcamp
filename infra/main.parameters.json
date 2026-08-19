@@ -18,7 +18,7 @@
       "value": "${AZURE_PRINCIPAL_TYPE=User}"
     },
     "appExists": {
-      "value": "${SERVICE_APP_RESOURCE_EXISTS}"
+      "value": "${SERVICE_APP_RESOURCE_EXISTS=false}"
     },
     "searchSku": {
       "value": "${AZURE_AI_SEARCH_SKU=free}"
