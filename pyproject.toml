@@ -45,6 +45,7 @@ dev = [
 
 [project.urls]
 Documentation = "https://learn.microsoft.com/azure/foundry/"
+Repository = "https://github.com/naytron/foundry-bootcamp"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

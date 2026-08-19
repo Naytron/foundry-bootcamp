@@ -1,5 +1,7 @@
 # Lab 3.2: Trace and Monitor the Application
 
+> **Azure extension.** Local-only learners can inspect the configuration and run the tests, but live traces require a connected Application Insights resource and Foundry project.
+
 ## Objective
 
 Collect operational evidence across HTTP, retrieval, model, and tool execution without exposing message content by default.
@@ -42,9 +44,14 @@ Do not enable content capture in a shared or production environment.
 - Container platform logs and application traces are both available.
 - The Foundry monitoring dashboard shows token, latency, and failure signals after ingestion.
 
+Local-only verification:
+
+```bash
+python -m pytest tests/test_observability.py tests/test_api.py
+```
+
 ## Knowledge check
 
 1. Why are Container Apps console logs insufficient for model latency analysis?
 2. What does `traceparent` provide across services?
 3. When might content recording be justified, and which approvals would be required?
-

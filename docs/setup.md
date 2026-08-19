@@ -2,13 +2,22 @@
 
 Use the dev container when possible. It keeps the workshop on Python 3.12 even when the host has a newer interpreter that Azure or Agent Framework packages do not yet support.
 
+## Get the repository
+
+```bash
+git clone https://github.com/naytron/foundry-bootcamp.git
+cd foundry-bootcamp
+git switch -c learner/my-name
+```
+
+Stay on this learner branch. Do not check out the checkpoint tags while following the labs; use [Checkpoint guide](checkpoints.md) to compare snapshots without losing the current instructions.
+
 ## Prerequisites
 
 - Git
 - Python 3.12
 - Docker Desktop or another Docker-compatible engine
-- Azure CLI
-- Azure Developer CLI
+- A dev-container-compatible editor, or Azure CLI and Azure Developer CLI for the Azure tracks
 - An Azure subscription only when you begin the cloud path
 - Permission to create resources and role assignments in the selected subscription
 
@@ -16,13 +25,18 @@ The [Microsoft Foundry prerequisites](https://learn.microsoft.com/azure/foundry/
 
 ## Option 1: Dev container or Codespaces
 
-1. Open the repository in a dev-container-compatible editor or create a Codespace.
-2. Wait for the post-create dependency installation to finish.
-3. Copy `.env.example` to `.env`.
-4. Keep `USE_MOCK_SERVICES=true`.
-5. Run `python -m support_assistant`.
+1. Open the cloned folder in Visual Studio Code.
+2. Run **Dev Containers: Reopen in Container** from the command palette. Alternatively, open a [GitHub Codespace](https://codespaces.new/naytron/foundry-bootcamp).
+3. Wait until the terminal shows that the post-create dependency installation completed.
+4. Run:
 
-Open `http://localhost:8000`.
+   ```bash
+   cp .env.example .env
+   python -m support_assistant
+   ```
+
+5. Open the forwarded port or `http://localhost:8000`.
+6. Enter `local-development-token` in **Workshop access**.
 
 ## Option 2: Local Python
 
@@ -50,6 +64,16 @@ python -m support_assistant
 
 Use `local-development-token` in the browser while mock mode is enabled.
 
+## Confirm the first run
+
+In another terminal:
+
+```bash
+curl --fail http://localhost:8000/health
+```
+
+Expected JSON includes `"status":"healthy"` and `"mode":"mock"`. Stop the app with `Ctrl+C` after testing.
+
 ## Validate local setup
 
 ```bash
@@ -63,11 +87,12 @@ The local path must pass without Azure credentials or network calls.
 
 ## Prepare for Azure
 
-1. Sign in with `az login` and `azd auth login`.
-2. Run `./scripts/preflight.sh` or `.\scripts\preflight.ps1`.
-3. Review [costs](costs.md).
-4. Create an `azd` environment and set a unique bootcamp access token.
-5. Follow the cloud setup in [Day 1](../labs/day-1/README.md).
+Skip this section on the local-only track.
+
+1. Review [costs](costs.md).
+2. Sign in with `az login` and `azd auth login`.
+3. Decide whether to use existing resources (Day 1 Lab 1.3) or deploy the included infrastructure (Day 3 Lab 3.4).
+4. Follow that lab's environment and preflight sequence exactly.
 
 After provisioning, use `scripts/run_with_azd_env.py` to run seed, smoke, or evaluation commands with the selected environment values. The wrapper parses `azd` JSON output and never evaluates shell text.
 

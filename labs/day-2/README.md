@@ -2,6 +2,8 @@
 
 Day 2 turns the basic chat application into a source-backed support assistant. You will index synthetic content, add semantic and hybrid retrieval, expose citations, and add deterministic tools.
 
+**Track guidance:** Complete every local section in mock mode. Azure seeding and live Agent Framework behavior are optional extensions for learners with existing resources. Learners deploying the included infrastructure seed Azure Search in Day 3.
+
 ## Learning objectives
 
 By the end of this day, you can:
@@ -32,5 +34,4 @@ You are complete when:
 - The case tool returns `submitted: false`.
 - All Day 2 tests pass.
 
-The `day-2-complete` Git tag records the reference checkpoint after repository generation.
-
+Stay on your learner branch. Use the [`day-2-complete` checkpoint](../../docs/checkpoints.md) only for comparison.

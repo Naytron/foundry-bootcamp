@@ -1,4 +1,6 @@
-# Lab 1.3: Connect the Capstone to Foundry
+# Lab 1.3: Azure Extension - Connect Existing Resources
+
+> **Optional and Azure-dependent.** Skip this lab on the local-only track. If you plan to deploy this repository's infrastructure, continue to Day 2 in mock mode and return to Azure in Day 3 Lab 3.4.
 
 ## Objective
 
@@ -25,6 +27,7 @@ APP_ENV=development
 USE_MOCK_SERVICES=false
 FOUNDRY_PROJECT_ENDPOINT=https://YOUR-RESOURCE.services.ai.azure.com/api/projects/YOUR-PROJECT
 FOUNDRY_MODEL=YOUR-CHAT-DEPLOYMENT
+EMBEDDING_MODEL=YOUR-EMBEDDING-DEPLOYMENT
 AZURE_AI_SEARCH_ENDPOINT=https://YOUR-SEARCH.search.windows.net
 AZURE_AI_SEARCH_INDEX=support-knowledge
 BOOTCAMP_ACCESS_TOKEN=YOUR-UNIQUE-TOKEN

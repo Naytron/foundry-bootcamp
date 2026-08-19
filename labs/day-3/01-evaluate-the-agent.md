@@ -20,7 +20,13 @@ Each row separates expected behavior, expected sources, required phrases, and fo
 
 ## Run the local suite
 
-Start the app in mock mode, then run:
+Start the app in mock mode:
+
+```bash
+python -m support_assistant
+```
+
+In another terminal, run:
 
 ```bash
 python scripts/run_evaluation.py \
@@ -42,7 +48,7 @@ The local checks are deterministic and suitable for CI. They do not replace mode
 Cloud evaluation is billable and requires a configured Foundry project:
 
 ```bash
-python scripts/run_evaluation.py --cloud
+python scripts/run_with_azd_env.py python scripts/run_evaluation.py --cloud
 ```
 
 The runner uploads the prepared response dataset and applies relevance, groundedness, task adherence, intent resolution, violence, and indirect-attack evaluators. Review the report URL printed by the script.
@@ -61,4 +67,3 @@ Read [cloud evaluation with the Foundry SDK](https://learn.microsoft.com/azure/f
 1. Why should deterministic checks run before LLM-judge evaluation?
 2. Why does the cloud dataset contain response context?
 3. Which failures require a human reviewer rather than prompt tuning?
-

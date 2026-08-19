@@ -2,74 +2,116 @@
 
 ## Objective
 
-Run deployment preflight, inspect the infrastructure, deploy deliberately, verify the user journey, and remove all resources.
+Validate the completed application locally, then optionally create a deliberate Azure environment, verify it, and remove it.
 
-## Preflight
-
-1. Review [costs](../../docs/costs.md).
-2. Run `scripts/preflight.sh` or `scripts/preflight.ps1`.
-3. Confirm subscription, tenant, region, policy, quota, model versions, Search SKU, and role-assignment permission.
-4. Inspect `.azure/deployment-plan.md`, `azure.yaml`, and `infra/main.bicep`.
-5. Generate a unique workshop token.
-
-Create an environment:
-
-```bash
-azd env new
-azd env set BOOTCAMP_ACCESS_TOKEN "<unique-generated-value>"
-```
-
-Override model or Search parameters with `azd env set` when preflight shows the defaults are unavailable.
-
-## Validate locally
+## Local validation - required for every track
 
 ```bash
 ruff check .
 ruff format --check .
 mypy src
 python -m pytest
+python scripts/seed_search.py --dry-run
+python scripts/validate_repo.py
 az bicep build --file infra/main.bicep
 docker build --tag foundry-bootcamp:local .
 ```
 
+Run the container in mock mode and use `scripts/smoke_test.py`, or rely on the equivalent CI container job. Local-only learners stop here.
+
+## Azure extension - prepare an environment
+
+> This section is billable after `azd up`. Read [costs](../../docs/costs.md) first. The preflight and preview commands do not create resources.
+
+Choose a subscription and a region that supports both configured models. Use a unique environment name and token.
+
+### PowerShell
+
+```powershell
+$subscriptionId = "<your-subscription-id>"
+$location = "eastus2"
+$environmentName = "foundry-bootcamp-$(-join ((97..122) | Get-Random -Count 4 | ForEach-Object {[char]$_}))"
+$accessToken = python -c "import secrets; print(secrets.token_urlsafe(32))"
+$principalId = az ad signed-in-user show --query id --output tsv
+
+azd env new $environmentName --no-prompt
+azd env set AZURE_SUBSCRIPTION_ID $subscriptionId
+azd env set AZURE_LOCATION $location
+azd env set AZURE_PRINCIPAL_ID $principalId
+azd env set AZURE_PRINCIPAL_TYPE User
+azd env set BOOTCAMP_ACCESS_TOKEN $accessToken
+
+python scripts/preflight.py --subscription $subscriptionId --location $location
+azd provision --preview --no-prompt
+```
+
+### Bash
+
+```bash
+SUBSCRIPTION_ID="<your-subscription-id>"
+LOCATION="eastus2"
+ENVIRONMENT_NAME="foundry-bootcamp-$(python -c 'import secrets; print(secrets.token_hex(2))')"
+ACCESS_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
+PRINCIPAL_ID="$(az ad signed-in-user show --query id --output tsv)"
+
+azd env new "$ENVIRONMENT_NAME" --no-prompt
+azd env set AZURE_SUBSCRIPTION_ID "$SUBSCRIPTION_ID"
+azd env set AZURE_LOCATION "$LOCATION"
+azd env set AZURE_PRINCIPAL_ID "$PRINCIPAL_ID"
+azd env set AZURE_PRINCIPAL_TYPE User
+azd env set BOOTCAMP_ACCESS_TOKEN "$ACCESS_TOKEN"
+
+python scripts/preflight.py --subscription "$SUBSCRIPTION_ID" --location "$LOCATION"
+azd provision --preview --no-prompt
+```
+
+Resolve every preflight or preview failure before continuing. Override model, model-version, Search-SKU, or capacity parameters with `azd env set` only after confirming the available values.
+
 ## Deploy
 
-Only after the checks pass:
+Only after local validation and preview pass:
 
 ```bash
 azd up
 ```
 
-No script or workflow in this repository runs this command automatically.
+No workflow runs this command unless a repository maintainer manually dispatches the protected deployment workflow.
 
-After provisioning, use the safe command wrapper to supply the selected `azd` environment without shell evaluation:
+## Seed and verify
 
 ```bash
 python scripts/run_with_azd_env.py python scripts/seed_search.py
+python scripts/run_with_azd_env.py python scripts/smoke_test.py
+python scripts/run_with_azd_env.py python scripts/run_evaluation.py
 ```
 
-## Verify
+Expected outcomes:
 
-1. Open `SERVICE_URL`.
-2. Enter the generated workshop token.
-3. Ask the warranty and sensor-pairing questions.
-4. Verify structured citations.
-5. Run `python scripts/run_with_azd_env.py python scripts/smoke_test.py`.
-6. Run the local evaluation suite against `SERVICE_URL`.
-7. Inspect Container Apps logs and Foundry traces.
+1. Search reports five indexed synthetic documents.
+2. Smoke test passes health and grounded warranty citation checks.
+3. Local evaluation reports 8/8 passing cases against `SERVICE_URL`.
+4. Container Apps logs and Foundry traces appear after ingestion.
 
 ## Clean up
 
-Follow [cleanup](../../docs/cleanup.md). Review the target resource group, then run:
+Follow [Cleanup](../../docs/cleanup.md). Review the target resource group, then run:
 
 ```bash
 azd down
 ```
 
-Confirm the resources are gone before completing the bootcamp.
+Confirm the workshop resource group, model deployments, Search service, registry, Container App, and monitoring resources are gone.
+
+## Verify
+
+- Local quality, Bicep, container, and smoke tests pass.
+- Preflight and preview pass before any deployment.
+- Azure-only values remain in ignored `azd` environment state.
+- Deployed smoke and evaluation checks pass if you use the Azure extension.
+- The Azure environment is deleted after the extension.
 
 ## Knowledge check
 
 1. Why must model capacity be checked before Bicep deployment?
-2. Which identities need Foundry, Search, and ACR roles?
-3. What evidence demonstrates that deployment succeeded beyond an HTTP 200 health response?
+2. Which identities need Foundry, Search, monitoring, and ACR roles?
+3. What evidence demonstrates deployment success beyond an HTTP 200 health response?

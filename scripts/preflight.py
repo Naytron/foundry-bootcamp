@@ -32,6 +32,7 @@ def _run(command: list[str], *, timeout: int = 45) -> subprocess.CompletedProces
 
 def _arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--subscription", default=os.getenv("AZURE_SUBSCRIPTION_ID"))
     parser.add_argument("--location", default=os.getenv("AZURE_LOCATION"))
     parser.add_argument(
         "--chat-model",
@@ -70,7 +71,21 @@ def _tool_checks() -> list[Check]:
     return checks
 
 
-def _provider_checks() -> list[Check]:
+def _with_subscription(command: list[str], subscription: str | None) -> list[str]:
+    return [*command, "--subscription", subscription] if subscription else command
+
+
+def _azd_environment_values() -> dict[str, str]:
+    result = _run(["azd", "env", "get-values", "--output", "json"])
+    if result.returncode != 0:
+        return {}
+    values = json.loads(result.stdout)
+    return (
+        {str(key): str(value) for key, value in values.items()} if isinstance(values, dict) else {}
+    )
+
+
+def _provider_checks(subscription: str) -> list[Check]:
     providers = (
         "Microsoft.CognitiveServices",
         "Microsoft.Search",
@@ -82,17 +97,20 @@ def _provider_checks() -> list[Check]:
     checks = []
     for provider in providers:
         result = _run(
-            [
-                "az",
-                "provider",
-                "show",
-                "--namespace",
-                provider,
-                "--query",
-                "registrationState",
-                "--output",
-                "tsv",
-            ]
+            _with_subscription(
+                [
+                    "az",
+                    "provider",
+                    "show",
+                    "--namespace",
+                    provider,
+                    "--query",
+                    "registrationState",
+                    "--output",
+                    "tsv",
+                ],
+                subscription,
+            )
         )
         state = result.stdout.strip()
         checks.append(
@@ -106,18 +124,27 @@ def _provider_checks() -> list[Check]:
     return checks
 
 
-def _model_check(location: str, model: str, version: str, label: str) -> Check:
+def _model_check(
+    location: str,
+    model: str,
+    version: str,
+    label: str,
+    subscription: str,
+) -> Check:
     result = _run(
-        [
-            "az",
-            "cognitiveservices",
-            "model",
-            "list",
-            "--location",
-            location,
-            "--output",
-            "json",
-        ]
+        _with_subscription(
+            [
+                "az",
+                "cognitiveservices",
+                "model",
+                "list",
+                "--location",
+                location,
+                "--output",
+                "json",
+            ],
+            subscription,
+        )
     )
     if result.returncode != 0:
         return Check(
@@ -145,21 +172,24 @@ def _model_check(location: str, model: str, version: str, label: str) -> Check:
     )
 
 
-def _search_check(search_sku: str) -> Check:
+def _search_check(search_sku: str, subscription: str) -> Check:
     if search_sku.casefold() != "free":
         return Check("search-sku", "pass", f"requested SKU: {search_sku}")
     result = _run(
-        [
-            "az",
-            "resource",
-            "list",
-            "--resource-type",
-            "Microsoft.Search/searchServices",
-            "--query",
-            "[?sku.name=='free'] | length(@)",
-            "--output",
-            "tsv",
-        ]
+        _with_subscription(
+            [
+                "az",
+                "resource",
+                "list",
+                "--resource-type",
+                "Microsoft.Search/searchServices",
+                "--query",
+                "[?sku.name=='free'] | length(@)",
+                "--output",
+                "tsv",
+            ],
+            subscription,
+        )
     )
     if result.returncode != 0:
         return Check("search-sku", "warn", "could not determine existing Free services")
@@ -195,6 +225,8 @@ def _role_check(subscription_id: str) -> Check:
             "[].{role:roleDefinitionName,scope:scope}",
             "--output",
             "json",
+            "--subscription",
+            subscription_id,
         ]
     )
     assignments_data = json.loads(assignments.stdout) if assignments.returncode == 0 else []
@@ -254,11 +286,20 @@ def main() -> int:
     if any(check.status == "fail" for check in checks):
         return _print_results(checks)
 
-    account = _run(["az", "account", "show", "--output", "json"])
+    azd_values = _azd_environment_values()
+    subscription = args.subscription or azd_values.get("AZURE_SUBSCRIPTION_ID")
+    location = args.location or azd_values.get("AZURE_LOCATION")
+    account = _run(
+        _with_subscription(
+            ["az", "account", "show", "--output", "json"],
+            subscription,
+        )
+    )
     if account.returncode != 0:
         checks.append(Check("azure-login", "fail", "run az login and select a subscription"))
         return _print_results(checks)
     account_data = json.loads(account.stdout)
+    subscription = str(account_data["id"])
     checks.append(
         Check(
             "azure-login",
@@ -267,7 +308,7 @@ def main() -> int:
         )
     )
 
-    if not args.location:
+    if not location:
         checks.append(
             Check(
                 "azure-location",
@@ -277,18 +318,27 @@ def main() -> int:
         )
         return _print_results(checks)
 
-    checks.extend(_provider_checks())
-    checks.append(_model_check(args.location, args.chat_model, args.chat_version, "chat"))
+    checks.extend(_provider_checks(subscription))
     checks.append(
         _model_check(
-            args.location,
+            location,
+            args.chat_model,
+            args.chat_version,
+            "chat",
+            subscription,
+        )
+    )
+    checks.append(
+        _model_check(
+            location,
             args.embedding_model,
             args.embedding_version,
             "embedding",
+            subscription,
         )
     )
-    checks.append(_search_check(args.search_sku))
-    checks.append(_role_check(str(account_data["id"])))
+    checks.append(_search_check(args.search_sku, subscription))
+    checks.append(_role_check(subscription))
     checks.extend(_local_validation())
     checks.append(
         Check(

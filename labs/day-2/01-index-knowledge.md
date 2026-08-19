@@ -40,13 +40,17 @@ The script uses Microsoft Entra credentials. It never accepts a Search admin key
 
 ## Seed Azure AI Search
 
-After Day 1 cloud setup:
+> **Azure extension.** Skip this section on the local-only track. If you are deploying the included infrastructure, run this only after `azd up` in Day 3 Lab 3.4.
+
+With existing Azure resources configured in `.env`:
 
 ```bash
 python scripts/seed_search.py
 ```
 
 The configured identity needs permission to manage the index and upload documents. The running Container App needs only query access.
+
+Expected output: `Indexed 5 synthetic support documents.`
 
 Read [Azure AI Search with Agent Framework](https://learn.microsoft.com/agent-framework/integrations/by-component/context-providers/azure-ai-search) for the current integration options.
 
@@ -69,4 +73,3 @@ Read [Azure AI Search with Agent Framework](https://learn.microsoft.com/agent-fr
 1. Why is the document ID both the Search key and citation identifier?
 2. Why is indexing not performed automatically during API startup?
 3. Which Search permissions should the runtime identity not have?
-

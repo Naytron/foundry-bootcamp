@@ -25,6 +25,8 @@ The tools have typed, bounded parameters. The agent instructions state that a dr
 
 ## Exercise
 
+In mock mode, these prompts exercise the same deterministic result contracts without calling Agent Framework. In Azure mode, Agent Framework selects and invokes the typed functions.
+
 Ask:
 
 ```text
@@ -63,4 +65,3 @@ Review the tool result contract:
 ## Stretch
 
 Design a real submission boundary on paper. Include caller authorization, explicit confirmation, idempotency key, audit event, retry behavior, and a way to reconcile an unknown result.
-

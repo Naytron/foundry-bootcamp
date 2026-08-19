@@ -36,6 +36,8 @@ Review the implemented controls:
 
 Add one new adversarial case to the JSONL dataset and make the local suite pass.
 
+Run the app and repeat the command from [Lab 3.1](01-evaluate-the-agent.md). Do not commit generated `.foundry/results/` files.
+
 ## Govern
 
 Define:
@@ -52,9 +54,15 @@ Define:
 
 The workshop intentionally omits Entra user sign-in, durable tenant-aware state, private endpoints, per-user Search filters, a real ticketing authorization layer, and multi-region resilience. Record which are required for your scenario before treating the sample as an architecture baseline.
 
+## Verify
+
+- Your new case has a unique ID and valid JSONL syntax.
+- The deterministic suite passes all original cases plus your new case.
+- The case tests observable behavior rather than hidden model reasoning.
+- No secret, tenant data, or customer data is present.
+
 ## Knowledge check
 
 1. Which control prevents tool execution from becoming unauthorized action?
 2. Why is a correct citation not proof that the answer is correct?
 3. How do preproduction evaluation and production monitoring complement each other?
-

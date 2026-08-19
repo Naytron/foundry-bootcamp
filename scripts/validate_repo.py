@@ -14,6 +14,8 @@ REQUIRED_PATHS = (
     "infra/main.bicep",
     "pyproject.toml",
     "Dockerfile",
+    "docs/checkpoints.md",
+    "docs/e2e-validation.md",
     "labs/day-1/README.md",
     "labs/day-2/README.md",
     "labs/day-3/README.md",
@@ -30,6 +32,7 @@ SECRET_PATTERNS = {
         r"InstrumentationKey=[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
     ),
 }
+LAB_HEADINGS = ("## Objective", "## Verify", "## Knowledge check")
 
 
 def _tracked_text_files() -> list[Path]:
@@ -122,6 +125,53 @@ def _validate_action_pins(files: list[Path]) -> list[str]:
     return errors
 
 
+def _validate_curriculum() -> list[str]:
+    errors = []
+    root_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    learner_phrases = (
+        "git clone https://github.com/naytron/foundry-bootcamp.git",
+        "Stay on `main`",
+        "Choose a learning track",
+        "docs/checkpoints.md",
+    )
+    errors.extend(
+        f"README.md: missing learner guidance: {phrase}"
+        for phrase in learner_phrases
+        if phrase not in root_readme
+    )
+
+    for day_dir in sorted((ROOT / "labs").glob("day-*")):
+        day_readme = (day_dir / "README.md").read_text(encoding="utf-8")
+        if "Track guidance:" not in day_readme:
+            errors.append(f"{day_dir.relative_to(ROOT)}/README.md: missing track guidance")
+        for lab in sorted(day_dir.glob("*.md")):
+            if lab.name == "README.md":
+                continue
+            text = lab.read_text(encoding="utf-8")
+            errors.extend(
+                f"{lab.relative_to(ROOT)}: missing {heading}"
+                for heading in LAB_HEADINGS
+                if heading not in text
+            )
+            if f"]({lab.name})" not in day_readme:
+                errors.append(f"{day_dir.relative_to(ROOT)}/README.md: does not link {lab.name}")
+
+    combined_labs = "\n".join(
+        path.read_text(encoding="utf-8") for path in (ROOT / "labs").rglob("*.md")
+    )
+    obsolete_phrases = (
+        "After Day 1 cloud setup",
+        "Create a temporary local document that contains",
+        "\npython scripts/run_evaluation.py --cloud\n",
+    )
+    errors.extend(
+        f"labs: obsolete ambiguous guidance remains: {obsolete}"
+        for obsolete in obsolete_phrases
+        if obsolete in combined_labs
+    )
+    return errors
+
+
 def main() -> int:
     files = _tracked_text_files()
     errors = [
@@ -130,6 +180,7 @@ def main() -> int:
         *_validate_structured_files(files),
         *_scan_secrets(files),
         *_validate_action_pins(files),
+        *_validate_curriculum(),
     ]
     if errors:
         for error in errors:
