@@ -11,4 +11,4 @@ if [[ -n "${UV_INSECURE_HOST:-}" ]]; then
   install_args+=(--allow-insecure-host "$UV_INSECURE_HOST")
 fi
 
-uv pip install "${install_args[@]}" pip==26.2.1 -e ".[dev]"
+sudo -E uv pip install "${install_args[@]}" pip==26.2.1 -e ".[dev]"
