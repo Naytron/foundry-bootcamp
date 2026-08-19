@@ -42,7 +42,7 @@ jobs:
           cache: pip
 
       - name: Set up Azure Developer CLI
-        uses: Azure/setup-azd@cf638ffd167fc81e1851241a478a723c05fa9cb3 # v2.2.0
+        uses: Azure/setup-azd@0b7e3a35ab00f2eee7080c845eb39c3f0ebfa553 # v2.4.0
 
       - name: Sign in to Azure with OIDC
         uses: Azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
