@@ -13,7 +13,7 @@
     "APP_ENV": "development",
     "USE_MOCK_SERVICES": "true"
   },
-  "postCreateCommand": "python -m pip install --upgrade pip==26.2.1 && python -m pip install -e '.[dev]'",
+  "postCreateCommand": "uv pip install --system pip==26.2.1 -e '.[dev]'",
   "forwardPorts": [
     8000
   ],
