@@ -7,7 +7,7 @@ Contributions that improve correctness, accessibility, learner clarity, and cros
 1. Use the included dev container or Python 3.12.
 2. Copy `.env.example` to `.env` and keep `USE_MOCK_SERVICES=true`.
 3. Install the project with `python -m pip install -e ".[dev]"`.
-4. Run `python -m pytest`, `ruff check .`, `ruff format --check .`, and `mypy src`.
+4. Run `python -m pytest`, `python -m ruff check .`, `python -m ruff format --check .`, and `python -m mypy src`.
 
 ## Content guidelines
 
@@ -21,4 +21,3 @@ Contributions that improve correctness, accessibility, learner clarity, and cros
 ## Pull requests
 
 Keep changes focused. Explain learner impact, list validation performed, and identify any Azure cost, permission, preview, or regional-availability implications.
-

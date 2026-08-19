@@ -87,9 +87,9 @@ Expected JSON includes `"status":"healthy"` and `"mode":"mock"`. Stop the app wi
 ## Validate local setup
 
 ```bash
-ruff check .
-ruff format --check .
-mypy src
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy src
 python -m pytest
 ```
 

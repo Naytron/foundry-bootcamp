@@ -195,7 +195,7 @@ No cloud deployment is authorized for repository construction. Actual usage and 
 
 | Check | Command | Result | Timestamp |
 |-------|---------|--------|-----------|
-| Python quality | `ruff check .`, `ruff format --check .`, `mypy src` | Pass | 2026-08-18 |
+| Python quality | `python -m ruff check .`, `python -m ruff format --check .`, `python -m mypy src` | Pass | 2026-08-18 |
 | Automated tests | `python -m pytest -q` | 86 passed, 95.74% coverage | 2026-08-18 |
 | Local evaluation | `python scripts/run_evaluation.py` | 8/8 passed | 2026-08-18 |
 | Repository integrity | `python scripts/validate_repo.py` | 106 text files valid | 2026-08-18 |

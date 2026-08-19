@@ -7,9 +7,9 @@ Validate the completed application locally, then optionally create a deliberate 
 ## Local validation - required for every track
 
 ```bash
-ruff check .
-ruff format --check .
-mypy src
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy src
 python -m pytest
 python scripts/seed_search.py --dry-run
 python scripts/validate_repo.py
