@@ -15,6 +15,14 @@ def test_mock_mode_does_not_require_cloud_values() -> None:
     assert settings.foundry_project_endpoint is None
 
 
+def test_example_environment_is_valid_for_local_mock_mode() -> None:
+    settings = Settings(_env_file=".env.example")
+
+    assert settings.use_mock_services
+    assert settings.foundry_project_endpoint is None
+    assert settings.azure_ai_search_endpoint is None
+
+
 def test_cloud_mode_reports_all_missing_values() -> None:
     with pytest.raises(ValidationError, match=r"AZURE_AI_SEARCH_ENDPOINT.*FOUNDRY_MODEL"):
         Settings(_env_file=None, app_env="test", use_mock_services=False)
