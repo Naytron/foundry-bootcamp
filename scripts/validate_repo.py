@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_PATHS = (
     "README.md",
     "LICENSE",
+    ".devcontainer/devcontainer-lock.json",
     "azure.yaml",
     "infra/main.bicep",
     "pyproject.toml",
