@@ -19,18 +19,62 @@ No Azure resources are created by this validation.
 
 | Check | Status | Evidence |
 |-------|--------|----------|
-| Public clone and checkpoint tags | Pending | Updated after publication |
-| Dev container setup | Pending | Updated after clean-room run |
-| Day 1 local journey | Pending | Updated after clean-room run |
-| Day 2 local journey | Pending | Updated after clean-room run |
-| Day 3 local journey | Pending | Updated after clean-room run |
-| Playwright UI journey | Pending | Updated after clean-room run |
-| Deterministic evaluation | Pending | Expected baseline: 8/8 |
-| Static quality and dependency audit | Pending | Updated after clean-room run |
-| Bicep and production container | Pending | Updated after clean-room run |
-| External documentation links | Pending | Updated after link check |
-| Read-only Azure preflight/preview | Pending | No resources created |
-| GitHub Actions CI | Pending | Updated after first public push |
+| Public clone and checkpoint tags | Pass | Fresh clone from `naytron/foundry-bootcamp`; `main` plus all four tags present |
+| Dev container setup | Pass | Python 3.12, Azure CLI, azd, Docker-in-Docker, pinned features, and 123 hardened packages |
+| Day 1 local journey | Pass | Health, token authentication, streaming chat, session behavior, and focused tests |
+| Day 2 local journey | Pass | Five-document schema dry-run, grounding, citations, tools, and prompt-boundary checks |
+| Day 3 local journey | Pass | Evaluation, observability tests, repository validation, Bicep, and container path |
+| Playwright UI journey | Pass | Page load, token save, streaming response, citations, new chat, invalid-token error, and mobile viewport |
+| Deterministic evaluation | Pass | 8/8 cases |
+| Static quality and dependency audit | Pass | 94 tests, 95.91% coverage, Ruff, Mypy, and no known vulnerabilities |
+| Bicep and production container | Pass | Bicep build/lint; non-root UID 10001; grounded smoke test; no runtime packaging tools |
+| External documentation links | Pass | 15/15 locally and in the public workflow |
+| Read-only Azure preflight/preview | Pass | Providers/models/roles/Search/quota checks and `azd provision --preview`; resource group remained absent |
+| GitHub Actions CI | Pass | Python/repository, Bicep, and production-container jobs green |
+
+Validated: 2026-08-19 against the public `main` branch.
+
+## Defects found and fixed
+
+The clean-room journey found issues that ordinary unit tests did not:
+
+- The root quick start omitted clone, `.env`, and learning-track guidance.
+- Local, existing-resource, and deploy-included-infrastructure tracks were mixed together.
+- The trust-boundary exercise asked learners to create a document that could not pass the index schema.
+- Day 3 environment, preflight, seed, smoke, and evaluation commands were incomplete or out of order.
+- Blank optional Azure URLs made a copied `.env.example` invalid in mock mode.
+- The dev-container base had a stale Yarn apt source.
+- Container-network TLS restrictions needed a documented mirror/offline-wheel path.
+- The base container's older `mypy` executable shadowed the pinned project version.
+- Root package installation made learner cache paths unwritable.
+- Inherited GitPython and setuptools versions failed the dependency audit.
+- The mounted repository needed a narrowly scoped Git safe-directory entry.
+- Generated tool caches made repository validation slow and noisy.
+- Dev Container feature resolution left an untracked lock file.
+- The CI smoke-test pipe caused `curl` to exit with a broken-pipe status.
+- `azd provision --preview` needed a safe default for first-deployment resource discovery.
+
+Each issue now has either an automated regression check or a documented, tested setup path.
+
+## Read-only Azure evidence
+
+- All six required resource providers were registered.
+- The configured chat and embedding model versions were available in East US 2.
+- The subscription had no existing Free Search service.
+- The signed-in learner had role-assignment authority.
+- Container Apps managed-environment usage was 1 of 50.
+- Chat and embedding token quotas exceeded the template's requested capacities.
+- Subscription policy assignments did not constrain the workshop resource types or region.
+- The provisioning preview completed successfully.
+- A follow-up existence check confirmed that preview created no resource group.
+
+Subscription, tenant, principal, environment, and token values are intentionally omitted.
+
+## Known validation boundary
+
+This run did not call `azd provision`, `azd up`, or `azd deploy`. It therefore does not claim live validation of model inference, Search indexing, managed-identity propagation, telemetry ingestion, deployed evaluation, or Azure cleanup. Those remain explicitly labeled Azure extensions in the learner guide.
+
+The test network blocked direct TLS access to `files.pythonhosted.org` from containers. The documented `UV_FIND_LINKS` offline-mirror path and Docker build arguments were used and passed. Public GitHub-hosted CI also built the image successfully from the normal package index path.
 
 ## Learner usability rubric
 
@@ -45,4 +89,3 @@ Every lab must provide:
 7. A knowledge check.
 
 The repository validator enforces the structural parts of this rubric. The clean-room journey verifies that the commands work in sequence.
-
