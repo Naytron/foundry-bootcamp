@@ -8,6 +8,7 @@ Start with the local mock path. If it fails, fix the application before investig
 |---------|-------|
 | Python version is rejected | Use Python 3.12 or the dev container |
 | Import error | Activate the virtual environment and reinstall `.[dev]` |
+| Package TLS or proxy failure | Set an approved `UV_INDEX_URL`, or configure the documented offline `UV_FIND_LINKS` path before rebuilding the dev container |
 | HTTP 401 from `/api/chat` | Match the browser bearer token to `BOOTCAMP_ACCESS_TOKEN` |
 | HTTP 429 | Wait for the configured rate window or restart the local process |
 | UI loads but chat does not | Inspect `/api/config`, browser console, and the SSE response |

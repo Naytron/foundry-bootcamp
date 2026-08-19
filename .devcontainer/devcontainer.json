@@ -13,7 +13,12 @@
     "APP_ENV": "development",
     "USE_MOCK_SERVICES": "true"
   },
-  "postCreateCommand": "uv pip install --system pip==26.2.1 -e '.[dev]'",
+  "remoteEnv": {
+    "UV_INDEX_URL": "${localEnv:UV_INDEX_URL}",
+    "UV_FIND_LINKS": "${localEnv:UV_FIND_LINKS}",
+    "UV_INSECURE_HOST": "${localEnv:UV_INSECURE_HOST}"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
   "forwardPorts": [
     8000
   ],

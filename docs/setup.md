@@ -38,6 +38,16 @@ The [Microsoft Foundry prerequisites](https://learn.microsoft.com/azure/foundry/
 5. Open the forwarded port or `http://localhost:8000`.
 6. Enter `local-development-token` in **Workshop access**.
 
+### Enterprise package mirrors
+
+If your network blocks `files.pythonhosted.org`, set an approved mirror in the host environment before reopening the container:
+
+```bash
+UV_INDEX_URL=https://your-approved-python-mirror/simple
+```
+
+For a disconnected workshop, an administrator can provide a complete wheel directory and set `UV_FIND_LINKS`. Set `UV_INSECURE_HOST` only for an explicitly approved HTTP mirror. The post-create script switches to no-index mode when `UV_FIND_LINKS` is present.
+
 ## Option 2: Local Python
 
 ### PowerShell
