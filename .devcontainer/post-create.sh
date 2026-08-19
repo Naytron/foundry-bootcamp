@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+git config --global --add safe.directory "$PWD"
+
 install_args=(--system)
 
 if [[ -n "${UV_FIND_LINKS:-}" ]]; then
