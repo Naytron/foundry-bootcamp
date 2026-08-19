@@ -32,6 +32,18 @@ SECRET_PATTERNS = {
         r"InstrumentationKey=[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}"
     ),
 }
+IGNORED_DIRECTORIES = {
+    ".git",
+    ".foundry",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "htmlcov",
+}
 LAB_HEADINGS = ("## Objective", "## Verify", "## Knowledge check")
 
 
@@ -56,7 +68,7 @@ def _tracked_text_files() -> list[Path]:
         for path in ROOT.rglob("*")
         if path.is_file()
         and path.suffix.casefold() in suffixes
-        and not {".git", ".venv", ".foundry"} & set(path.parts)
+        and not IGNORED_DIRECTORIES & set(path.parts)
     ]
 
 

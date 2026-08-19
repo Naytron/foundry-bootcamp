@@ -11,4 +11,5 @@ if [[ -n "${UV_INSECURE_HOST:-}" ]]; then
   install_args+=(--allow-insecure-host "$UV_INSECURE_HOST")
 fi
 
-sudo -E uv pip install "${install_args[@]}" pip==26.2.1 -e ".[dev]"
+sudo -H --preserve-env=UV_INDEX_URL,UV_FIND_LINKS,UV_INSECURE_HOST \
+  uv pip install "${install_args[@]}" pip==26.2.1 -e ".[dev]"

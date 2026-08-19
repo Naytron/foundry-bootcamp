@@ -1,10 +1,12 @@
 """Learner curriculum contract tests."""
 
+from pathlib import Path
+
 import pytest
 
 from scripts.check_external_links import external_links
 from scripts.preflight import _azd_environment_values, _with_subscription
-from scripts.validate_repo import ROOT, _validate_curriculum
+from scripts.validate_repo import ROOT, _tracked_text_files, _validate_curriculum
 
 
 def test_curriculum_contract_is_complete() -> None:
@@ -46,3 +48,19 @@ def test_preflight_reads_selected_azd_environment(monkeypatch: pytest.MonkeyPatc
         "AZURE_SUBSCRIPTION_ID": "sub",
         "AZURE_LOCATION": "eastus2",
     }
+
+
+def test_repository_validation_ignores_generated_caches(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from scripts import validate_repo
+
+    root = tmp_path
+    (root / "keep.md").write_text("# Keep", encoding="utf-8")
+    cache = root / ".mypy_cache"
+    cache.mkdir()
+    (cache / "cache.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(validate_repo, "ROOT", root)
+
+    assert [path.name for path in _tracked_text_files()] == ["keep.md"]
