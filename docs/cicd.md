@@ -20,6 +20,10 @@ Workflow permissions are read-only, actions are pinned to immutable commit SHAs,
 
 `.github/workflows/deploy.yml` runs only through `workflow_dispatch` and targets a protected GitHub environment named `workshop`.
 
+The location input defaults to `eastus2`. A maintainer can override it with another preflighted region when manually dispatching the workflow.
+
+An environment name is bound to its original region after the first deployment. The workflow rejects a different location for an existing tagged environment to prevent creating a second billable stack. Reuse the original location or choose a new environment name.
+
 Configure environment variables:
 
 - `AZURE_CLIENT_ID`

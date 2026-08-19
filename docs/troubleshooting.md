@@ -23,6 +23,7 @@ Start with the local mock path. If it fails, fix the application before investig
 | HTTP 403 | Verify the caller has the current Foundry role at project scope |
 | Deployment not found | Use the deployment name, not only the catalog model name |
 | Capacity error | Select another supported region/SKU or request quota |
+| Default region is unsuitable | Create a new environment with `python scripts/create_environment.py --location <region>` and rerun preflight |
 | Project endpoint rejected | Use `https://...services.ai.azure.com/api/projects/...` |
 | Private network timeout | Run from the approved network and verify private DNS |
 
@@ -55,3 +56,4 @@ The seeding command retries bounded, exponential delays only when Azure returns 
 - Do not paste tokens, connection strings, subscription IDs, tenant IDs, prompts, or customer data into issues.
 - Keep message-content tracing disabled unless an approved development scenario requires it.
 - Use AppLens and Azure Monitor for live Azure diagnostics rather than adding broad exception catches or debug responses.
+- Do not change `AZURE_LOCATION` on a provisioned environment expecting resources to move; use a new environment for regional migration.

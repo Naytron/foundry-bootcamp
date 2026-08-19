@@ -26,10 +26,10 @@ No Azure resources are created by this validation.
 | Day 3 local journey | Pass | Evaluation, observability tests, repository validation, Bicep, and container path |
 | Playwright UI journey | Pass | Page load, token save, streaming response, citations, new chat, invalid-token error, and mobile viewport |
 | Deterministic evaluation | Pass | 8/8 cases |
-| Static quality and dependency audit | Pass | 94 tests, 95.91% coverage, Ruff, Mypy, and no known vulnerabilities |
+| Static quality and dependency audit | Pass | 109 tests, 95.93% coverage, Ruff, Mypy, and no known vulnerabilities |
 | Bicep and production container | Pass | Bicep build/lint; non-root UID 10001; grounded smoke test; no runtime packaging tools |
 | External documentation links | Pass | 15/15 locally and in the public workflow |
-| Read-only Azure preflight/preview | Pass | Providers/models/roles/Search/quota checks and `azd provision --preview`; resource group remained absent |
+| Read-only Azure preflight/preview | Pass | Environment helper persisted East US 2, preflight and `azd provision --preview` passed, no resource group appeared, and local state was removed |
 | GitHub Actions CI | Pass | Python/repository, Bicep, and production-container jobs green |
 
 Validated: 2026-08-19 against the public `main` branch.
@@ -53,6 +53,10 @@ The clean-room journey found issues that ordinary unit tests did not:
 - Dev Container feature resolution left an untracked lock file.
 - The CI smoke-test pipe caused `curl` to exit with a broken-pipe status.
 - `azd provision --preview` needed a safe default for first-deployment resource discovery.
+- `az account list-locations` could not validate a specified subscription; the helper now resolves subscription context and uses the read-only ARM locations endpoint.
+- Preflight overrides could differ from the effective `azd`/process/Bicep deployment location; a synchronization check now blocks mismatches with a repair command.
+- Failed environment setup could lose the learner's previous `azd` selection; rollback now restores the exact prior name.
+- Workflow redispatch could change region for an existing environment name and orphan a billable stack; tagged environments are now region-bound.
 
 Each issue now has either an automated regression check or a documented, tested setup path.
 
@@ -66,6 +70,8 @@ Each issue now has either an automated regression check or a documented, tested 
 - Chat and embedding token quotas exceeded the template's requested capacities.
 - Subscription policy assignments did not constrain the workshop resource types or region.
 - The provisioning preview completed successfully.
+- East US 2 is the environment default, with Sweden Central, North Central US, and East US documented as preflighted override candidates.
+- The helper created a temporary local `azd` environment, persisted `eastus2`, generated its token without disclosure, and removed the environment after preview.
 - A follow-up existence check confirmed that preview created no resource group.
 
 Subscription, tenant, principal, environment, and token values are intentionally omitted.

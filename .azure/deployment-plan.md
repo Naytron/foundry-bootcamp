@@ -24,7 +24,7 @@ Generated: 2026-08-18
 | Scale | Small, single-region workshop environment |
 | Budget | Cost-optimized; scale to zero; cleanup required |
 | Subscription | Learner-supplied at deployment time; no subscription is used while building this repository |
-| Location | Learner-supplied `AZURE_LOCATION`; preflight verifies model and service availability |
+| Location | East US 2 (`eastus2`) by default; learners can override `AZURE_LOCATION`, preflight checks model/provider basics, and preview validates the template |
 | Compliance | Synthetic data only; no regulated or customer data |
 | Architecture preference | Azure Developer CLI with modular Bicep |
 

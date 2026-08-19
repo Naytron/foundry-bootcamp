@@ -23,47 +23,25 @@ Run the container in mock mode and use `scripts/smoke_test.py`, or rely on the e
 
 > This section is billable after `azd up`. Read [costs](../../docs/costs.md) first. The preflight and preview commands do not create resources.
 
-Choose a subscription and a region that supports both configured models. Use a unique environment name and token.
-
-### PowerShell
-
-```powershell
-$subscriptionId = "<your-subscription-id>"
-$location = "eastus2"
-$environmentName = "foundry-bootcamp-$(-join ((97..122) | Get-Random -Count 4 | ForEach-Object {[char]$_}))"
-$accessToken = python -c "import secrets; print(secrets.token_urlsafe(32))"
-$principalId = az ad signed-in-user show --query id --output tsv
-
-azd env new $environmentName --no-prompt
-azd env set AZURE_SUBSCRIPTION_ID $subscriptionId
-azd env set AZURE_LOCATION $location
-azd env set AZURE_PRINCIPAL_ID $principalId
-azd env set AZURE_PRINCIPAL_TYPE User
-azd env set BOOTCAMP_ACCESS_TOKEN $accessToken
-
-python scripts/preflight.py --subscription $subscriptionId --location $location
-azd provision --preview --no-prompt
-```
-
-### Bash
+Choose a subscription. The helper generates a unique environment, defaults to East US 2, resolves your learner principal, and stores a generated access token without printing it:
 
 ```bash
-SUBSCRIPTION_ID="<your-subscription-id>"
-LOCATION="eastus2"
-ENVIRONMENT_NAME="foundry-bootcamp-$(python -c 'import secrets; print(secrets.token_hex(2))')"
-ACCESS_TOKEN="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
-PRINCIPAL_ID="$(az ad signed-in-user show --query id --output tsv)"
-
-azd env new "$ENVIRONMENT_NAME" --no-prompt
-azd env set AZURE_SUBSCRIPTION_ID "$SUBSCRIPTION_ID"
-azd env set AZURE_LOCATION "$LOCATION"
-azd env set AZURE_PRINCIPAL_ID "$PRINCIPAL_ID"
-azd env set AZURE_PRINCIPAL_TYPE User
-azd env set BOOTCAMP_ACCESS_TOKEN "$ACCESS_TOKEN"
-
-python scripts/preflight.py --subscription "$SUBSCRIPTION_ID" --location "$LOCATION"
+python scripts/create_environment.py --subscription <your-subscription-id>
+python scripts/preflight.py
 azd provision --preview --no-prompt
 ```
+
+Expected setup output identifies `East US 2 (eastus2, default)` and never prints the access token.
+
+To override the default with a suggested region:
+
+```bash
+python scripts/create_environment.py \
+  --subscription <your-subscription-id> \
+  --location swedencentral
+```
+
+See [Azure region selection](../../docs/regions.md) for `northcentralus`, `eastus`, custom-region warnings, dry-run, and migration guidance.
 
 Resolve every preflight or preview failure before continuing. Override model, model-version, Search-SKU, or capacity parameters with `azd env set` only after confirming the available values.
 

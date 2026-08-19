@@ -17,6 +17,7 @@ REQUIRED_PATHS = (
     "Dockerfile",
     "docs/checkpoints.md",
     "docs/e2e-validation.md",
+    "docs/regions.md",
     "labs/day-1/README.md",
     "labs/day-2/README.md",
     "labs/day-3/README.md",
@@ -146,6 +147,7 @@ def _validate_curriculum() -> list[str]:
         "Stay on `main`",
         "Choose a learning track",
         "docs/checkpoints.md",
+        "docs/regions.md",
     )
     errors.extend(
         f"README.md: missing learner guidance: {phrase}"

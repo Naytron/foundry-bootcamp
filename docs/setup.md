@@ -102,7 +102,8 @@ Skip this section on the local-only track.
 1. Review [costs](costs.md).
 2. Sign in with `az login` and `azd auth login`.
 3. Decide whether to use existing resources (Day 1 Lab 1.3) or deploy the included infrastructure (Day 3 Lab 3.4).
-4. Follow that lab's environment and preflight sequence exactly.
+4. Review [region selection](regions.md). New environments default to East US 2 and support explicit overrides.
+5. Follow the selected lab's environment and preflight sequence exactly.
 
 After provisioning, use `scripts/run_with_azd_env.py` to run seed, smoke, or evaluation commands with the selected environment values. The wrapper parses `azd` JSON output and never evaluates shell text.
 

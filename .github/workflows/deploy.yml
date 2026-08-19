@@ -8,8 +8,9 @@ on:
         required: true
         type: string
       location:
-        description: Azure region validated for the selected models
+        description: Azure region; suggested alternatives include swedencentral, northcentralus, and eastus
         required: true
+        default: eastus2
         type: string
 
 permissions:
@@ -80,9 +81,43 @@ jobs:
           AZURE_LOCATION: ${{ inputs.location }}
         run: |
           set -euo pipefail
-          azd env select "$AZURE_ENV_NAME" || azd env new "$AZURE_ENV_NAME" --no-prompt
+          requested_location="${AZURE_LOCATION,,}"
+          if [[ ! "$AZURE_ENV_NAME" =~ ^[a-z0-9]([a-z0-9-]{0,62}[a-z0-9])?$ ]]; then
+            echo "::error::Environment names must be 1-64 lowercase letters, numbers, or hyphens and cannot start or end with a hyphen."
+            exit 1
+          fi
+          if [[ ! "$requested_location" =~ ^[a-z0-9]+$ ]]; then
+            echo "::error::Location must use an Azure CLI value such as eastus2."
+            exit 1
+          fi
+
+          existing_output=$(az group list \
+            --subscription "$AZURE_SUBSCRIPTION_ID" \
+            --tag "azd-env-name=$AZURE_ENV_NAME" \
+            --query "[].location" \
+            --output tsv)
+          existing_locations=()
+          if [[ -n "$existing_output" ]]; then
+            mapfile -t existing_locations <<< "$existing_output"
+          fi
+          if (( ${#existing_locations[@]} > 1 )); then
+            echo "::error::Multiple resource groups use azd environment name '$AZURE_ENV_NAME'. Clean up duplicates before deploying."
+            exit 1
+          fi
+          if (( ${#existing_locations[@]} == 1 )) && \
+             [[ "${existing_locations[0],,}" != "$requested_location" ]]; then
+            echo "::error::Environment '$AZURE_ENV_NAME' already uses ${existing_locations[0]}. Reuse that location or choose a new environment name."
+            exit 1
+          fi
+
+          if ! azd env select "$AZURE_ENV_NAME" --no-prompt; then
+            azd env new "$AZURE_ENV_NAME" \
+              --subscription "$AZURE_SUBSCRIPTION_ID" \
+              --location "$requested_location" \
+              --no-prompt
+          fi
           azd env set AZURE_SUBSCRIPTION_ID "$AZURE_SUBSCRIPTION_ID"
-          azd env set AZURE_LOCATION "$AZURE_LOCATION"
+          azd env set AZURE_LOCATION "$requested_location"
           azd env set AZURE_PRINCIPAL_ID "$AZURE_PRINCIPAL_ID"
           azd env set AZURE_PRINCIPAL_TYPE ServicePrincipal
           azd env set BOOTCAMP_ACCESS_TOKEN "$BOOTCAMP_ACCESS_TOKEN"

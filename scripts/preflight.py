@@ -7,6 +7,12 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
+from support_assistant.regions import (
+    DEFAULT_LOCATION,
+    SUGGESTED_LOCATIONS,
+    display_name,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class Check:
@@ -33,7 +39,7 @@ def _run(command: list[str], *, timeout: int = 45) -> subprocess.CompletedProces
 def _arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--subscription", default=os.getenv("AZURE_SUBSCRIPTION_ID"))
-    parser.add_argument("--location", default=os.getenv("AZURE_LOCATION"))
+    parser.add_argument("--location")
     parser.add_argument(
         "--chat-model",
         default=os.getenv("AZURE_AI_CHAT_MODEL_NAME", "gpt-4.1-mini"),
@@ -82,6 +88,45 @@ def _azd_environment_values() -> dict[str, str]:
     values = json.loads(result.stdout)
     return (
         {str(key): str(value) for key, value in values.items()} if isinstance(values, dict) else {}
+    )
+
+
+def _resolve_location(
+    explicit_location: str | None,
+    azd_values: dict[str, str],
+) -> tuple[str, str]:
+    if explicit_location:
+        return explicit_location.casefold(), "command-line override"
+    if os.getenv("AZURE_LOCATION"):
+        return os.environ["AZURE_LOCATION"].casefold(), "environment override"
+    if azd_values.get("AZURE_LOCATION"):
+        return azd_values["AZURE_LOCATION"].casefold(), "selected azd environment"
+    return DEFAULT_LOCATION, "bootcamp default"
+
+
+def _location_sync_check(location: str, azd_values: dict[str, str]) -> Check:
+    stored_location = azd_values.get("AZURE_LOCATION")
+    process_location = os.getenv("AZURE_LOCATION")
+    configured = (stored_location or process_location or DEFAULT_LOCATION).casefold()
+    if configured == location:
+        if stored_location:
+            source = "selected azd environment"
+        elif process_location:
+            source = "process environment"
+        else:
+            source = "Bicep fallback"
+        return Check(
+            "azure-location-sync",
+            "pass",
+            f"{source} also uses {location}",
+        )
+    return Check(
+        "azure-location-sync",
+        "fail",
+        (
+            f"preflight resolved {location}, but deployment resolves {configured}; "
+            f"run 'azd env set AZURE_LOCATION {location}' or remove the override"
+        ),
     )
 
 
@@ -288,7 +333,7 @@ def main() -> int:
 
     azd_values = _azd_environment_values()
     subscription = args.subscription or azd_values.get("AZURE_SUBSCRIPTION_ID")
-    location = args.location or azd_values.get("AZURE_LOCATION")
+    location, location_source = _resolve_location(args.location, azd_values)
     account = _run(
         _with_subscription(
             ["az", "account", "show", "--output", "json"],
@@ -308,15 +353,14 @@ def main() -> int:
         )
     )
 
-    if not location:
-        checks.append(
-            Check(
-                "azure-location",
-                "fail",
-                "set AZURE_LOCATION or pass --location after reviewing policy and capacity",
-            )
+    checks.append(
+        Check(
+            "azure-location",
+            "pass" if location in SUGGESTED_LOCATIONS else "warn",
+            f"{display_name(location)} ({location}; {location_source})",
         )
-        return _print_results(checks)
+    )
+    checks.append(_location_sync_check(location, azd_values))
 
     checks.extend(_provider_checks(subscription))
     checks.append(

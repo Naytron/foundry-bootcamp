@@ -57,7 +57,7 @@ If you are unsure, use the **local-only** track. It exercises the complete UI, A
 
 ## Before using Azure
 
-Read [costs](docs/costs.md), run the platform-specific preflight script, and verify subscription policy, model capacity, quota, and role-assignment permissions. The repository never runs `azd up` automatically.
+Read [costs](docs/costs.md) and [region selection](docs/regions.md). New environments default to **East US 2**; pass `--location` to the environment helper to use another suggested region. Run preflight and verify subscription policy, model capacity, quota, and role-assignment permissions. The repository never runs `azd up` automatically.
 
 ## Reference
 
@@ -65,6 +65,7 @@ Read [costs](docs/costs.md), run the platform-specific preflight script, and ver
 - [CI/CD](docs/cicd.md)
 - [End-to-end validation](docs/e2e-validation.md)
 - [Setup](docs/setup.md)
+- [Azure regions](docs/regions.md)
 - [Checkpoint guide](docs/checkpoints.md)
 - [Glossary](docs/glossary.md)
 - [Troubleshooting](docs/troubleshooting.md)

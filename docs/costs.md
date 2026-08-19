@@ -20,7 +20,7 @@ Azure deployment is optional and billable. Prices, free grants, model availabili
 3. Check [Azure AI Search pricing](https://azure.microsoft.com/pricing/details/search/).
 4. Check [Container Apps pricing](https://azure.microsoft.com/pricing/details/container-apps/).
 5. Confirm whether the subscription already uses its single Free Search service.
-6. Confirm chat and embeddings quota in the selected region.
+6. Review [region selection](regions.md) and confirm chat and embeddings quota in the selected region.
 7. Set a budget or cost alert appropriate for the subscription.
 
 ## Cost controls in this repository
@@ -29,9 +29,9 @@ Azure deployment is optional and billable. Prices, free grants, model availabili
 - Search defaults to the Free SKU and can be overridden.
 - Container Apps scales to zero and is capped at one replica.
 - Model names, SKUs, and capacities are parameters.
+- East US 2 is only a default; region overrides remain environment-scoped and preflighted.
 - Evaluation uses eight synthetic cases.
 - Telemetry content capture is off and retention is short.
 - [Cleanup](cleanup.md) is part of Day 3, not an optional appendix.
 
 Do not deploy the workshop into a production subscription without reviewing policy, networking, naming, tagging, and cost controls.
-
